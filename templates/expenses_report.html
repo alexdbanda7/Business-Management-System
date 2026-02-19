@@ -1,0 +1,17 @@
+<h2>Expenses Report from {{ start_date }} to {{ end_date }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Category</th>
+            <th>Total Expense</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for expense in expenses_data %}
+        <tr>
+            <td>{{ expense['category'] }}</td>
+            <td>${{ "%.2f"|format(expense['total_expense']) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

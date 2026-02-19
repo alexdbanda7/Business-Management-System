@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Mas Art</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+
+<div class="sidebar">
+    <h2>Mas Art</h2>
+    <a href="/dashboard">Dashboard</a>
+    <a href="/sales">Sales</a>
+    <a href="/expenses">Expenses</a>
+    <a href="/inventory">Inventory</a>
+    <a href="/logout">Logout</a>
+</div>
+
+<div class="content">
+    <h1>Welcome, {{ user }}</h1>
+
+    <!-- Summary Cards -->
+    <div class="card-container">
+    <div class="card sales">
+        <h3>Total Sales</h3>
+        <div class="metric">MWK {{ total_sales }}</div>
+    </div>
+    <div class="card expenses">
+        <h3>Total Expenses</h3>
+        <div class="metric">MWK {{ total_expenses }}</div>
+    </div>
+    <div class="card profit">
+        <h3>Net Profit</h3>
+        <div class="metric">MWK {{ net_profit }}</div>
+    </div>
+    </div>
+
+
+<!-- Low Stock Alert -->
+    {% if low_stock %}
+    <div class="low-stock">
+        <h3>Low Stock Items</h3>
+        <ul>
+            {% for item in low_stock %}
+                <li>{{ item.item_name }} - {{ item.quantity }} left</li>
+            {% else %}
+                <li>No low stock items 🎉</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+
+<!-- Charts Section -->
+    <div class="charts-grid">
+
+        <!-- Bar Chart -->
+        <div class="chart-card">
+            <h3>Monthly Sales (Bar Chart)</h3>
+            <canvas id="barChart"></canvas>
+        </div>
+
+        <!-- Line Chart -->
+        <div class="chart-card">
+            <h3>Sales Trend (Line Graph)</h3>
+            <canvas id="lineChart"></canvas>
+        </div>
+
+        <!-- Expenses Line Chart -->
+        <div class="chart-card">
+            <h3>Expenses Trend</h3>
+            <canvas id="expenseChart"></canvas>
+        </div>
+
+        <!-- Pie Chart -->
+        <div class="chart-card">
+            <h3>Financial Distribution</h3>
+            <canvas id="pieChart"></canvas>
+        </div>
+
+    </div>
+
+
+
+</div>
+
+<script id="chart-data" type="application/json">
+{
+    "months": {{ months | tojson }},
+    "sales": {{ sales_data | tojson }},
+    "expenses": {{ expenses_data | tojson }},
+    "total_sales": {{ total_sales | tojson }},
+    "total_expenses": {{ total_expenses | tojson }},
+    "net_profit": {{ net_profit | tojson }}
+}
+</script>
+
+<script>
+const chartData = JSON.parse(document.getElementById('chart-data').textContent);
+
+// Detect dark mode
+const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+const textColor = isDark ? '#ffffff' : '#111827';
+const gridColor = isDark ? '#334155' : '#e5e7eb';
+
+// Currency formatter
+const currencyFormat = (value) => {
+    return 'MWK ' + value.toLocaleString();
+};
+
+// Common options
+const commonOptions = {
+    responsive: true,
+    animation: {
+        duration: 1500,
+        easing: 'easeInOutQuart'
+    },
+    plugins: {
+        legend: {
+            labels: {
+                color: textColor
+            }
+        },
+        tooltip: {
+            callbacks: {
+                label: function(context) {
+                    return currencyFormat(context.raw);
+                }
+            }
+        }
+    },
+    scales: {
+        x: {
+            ticks: { color: textColor },
+            grid: { color: gridColor }
+        },
+        y: {
+            ticks: {
+                color: textColor,
+                callback: function(value) {
+                    return currencyFormat(value);
+                }
+            },
+            grid: { color: gridColor }
+        }
+    }
+};
+
+// 📊 BAR CHART (Sales)
+new Chart(document.getElementById('barChart'), {
+    type: 'bar',
+    data: {
+        labels: chartData.months,
+        datasets: [{
+            label: 'Monthly Sales',
+            data: chartData.sales,
+            backgroundColor: '#3b82f6',
+            borderRadius: 6
+        }]
+    },
+    options: commonOptions
+});
+
+// 📈 SALES LINE CHART
+new Chart(document.getElementById('lineChart'), {
+    type: 'line',
+    data: {
+        labels: chartData.months,
+        datasets: [{
+            label: 'Sales Trend',
+            data: chartData.sales,
+            borderColor: '#16a34a',
+            backgroundColor: 'rgba(22,163,74,0.2)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: commonOptions
+});
+
+// 💸 EXPENSES LINE CHART
+new Chart(document.getElementById('expenseChart'), {
+    type: 'line',
+    data: {
+        labels: chartData.months,
+        datasets: [{
+            label: 'Expenses Trend',
+            data: chartData.expenses,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.2)',
+            tension: 0.4,
+            fill: true
+        }]
+    },
+    options: commonOptions
+});
+
+// 🥧 PIE CHART
+new Chart(document.getElementById('pieChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Total Sales', 'Total Expenses', 'Net Profit'],
+        datasets: [{
+            data: [
+                chartData.total_sales,
+                chartData.total_expenses,
+                chartData.net_profit
+            ],
+            backgroundColor: [
+                '#3b82f6',
+                '#ef4444',
+                '#16a34a'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        animation: {
+            duration: 1500
+        },
+        plugins: {
+            legend: {
+                labels: {
+                    color: textColor
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        return currencyFormat(context.raw);
+                    }
+                }
+            }
+        }
+    }
+});
+</script>
+
+
+</body>
+</html>

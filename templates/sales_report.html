@@ -1,0 +1,19 @@
+<h2>Sales Report from {{ start_date }} to {{ end_date }}</h2>
+<table>
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Total Quantity Sold</th>
+            <th>Total Sales</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for sale in sales_data %}
+        <tr>
+            <td>{{ sale['item_name'] }}</td>
+            <td>{{ sale['total_quantity'] }}</td>
+            <td>${{ "%.2f"|format(sale['total_sales']) }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>

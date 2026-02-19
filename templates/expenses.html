@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block title %}Expenses - Mas Art{% endblock %}
+
+{% block content %}
+<h2>Expense Records</h2>
+
+<a href="{{ url_for('add_expense') }}"><button class="btn-primary">Add Expense</button></a>
+<br><br>
+
+<div class="table-container">
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Amount</th>
+                <th>Date</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for expense in expenses %}
+            <tr>
+                <td>{{ expense[0] }}</td>
+                <td>{{ expense[1] }}</td>
+                <td>{{ expense[2] }}</td>
+                <td>{{ expense[3] }}</td>
+                <td>{{ expense[4] }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

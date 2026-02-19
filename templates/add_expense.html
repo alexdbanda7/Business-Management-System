@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Add Expense - Mas Art{% endblock %}
+
+{% block content %}
+<h2>Add New Expense</h2>
+
+<div class="form-container">
+    <form method="POST" action="{{ url_for('add_expense') }}">
+        <label for="category">Expense Category</label>
+        <select name="category" id="category" required>
+            {% for cat in categories %}
+                <option value="{{ cat }}">{{ cat }}</option>
+            {% endfor %}
+        </select>
+
+        <label for="description">Description</label>
+        <input type="text" name="description" id="description" placeholder="Enter description" required>
+
+        <label for="amount">Amount</label>
+        <input type="number" name="amount" id="amount" step="0.01" required>
+
+        <label for="date">Date</label>
+        <input type="date" name="date" id="date" required>
+
+        <button type="submit" class="btn-primary">Save Expense</button>
+    </form>
+</div>
+{% endblock %}

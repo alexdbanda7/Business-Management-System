@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ report_type | capitalize }} Sales Report
+{% endblock %}
+
+{% block content %}
+<div class="report-container">
+  <h1>{{ report_type | capitalize }} Sales Report</h1>
+
+  {% if sales_data %}
+    <a href="{{ url_for('download_report_pdf', report_type=report_type) }}" class="btn-pdf">Download PDF</a>
+    <table class="report-table">
+      <thead>
+        <tr>
+          <th>Item Name</th>
+          <th>Quantity</th>
+          <th>Total Price</th>
+          <th>Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for sale in sales_data %}
+          <tr>
+            <td>{{ sale['item_name'] }}</td>
+            <td>{{ sale['quantity'] }}</td>
+            <td>${{ "%.2f"|format(sale['total_price']) }}</td>
+            <td>{{ sale['date'] }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  {% else %}
+    <p class="no-data">No data found for the selected report type and period.</p>
+  {% endif %}
+</div>
+{% endblock %}

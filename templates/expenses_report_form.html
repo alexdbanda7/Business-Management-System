@@ -1,0 +1,30 @@
+<form method="POST" action="{{ url_for('expenses_report') }}">
+    <label for="report_type">Select Report Type:</label>
+    <select name="report_type" id="report_type">
+        <option value="daily">Daily</option>
+        <option value="weekly">Weekly</option>
+        <option value="monthly">Monthly</option>
+        <option value="custom">Custom Range</option>
+    </select>
+
+    <!-- Custom date range -->
+    <div id="custom_dates" style="display: none;">
+        <label for="start_date">Start Date:</label>
+        <input type="date" name="start_date" id="start_date">
+        <label for="end_date">End Date:</label>
+        <input type="date" name="end_date" id="end_date">
+    </div>
+
+    <button type="submit">Generate Report</button>
+</form>
+
+<script>
+    // Show the custom date range inputs if 'Custom Range' is selected
+    document.getElementById('report_type').addEventListener('change', function() {
+        if (this.value === 'custom') {
+            document.getElementById('custom_dates').style.display = 'block';
+        } else {
+            document.getElementById('custom_dates').style.display = 'none';
+        }
+    });
+</script>

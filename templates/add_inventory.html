@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Add Inventory - Mas Art{% endblock %}
+
+{% block content %}
+<div class="form-container">
+    <h2>Add New Inventory</h2>
+    <form method="POST">
+        <label for="item_name">Item Name</label>
+        <input type="text" id="item_name" name="item_name" required>
+
+        <label for="quantity">Quantity</label>
+        <input type="number" id="quantity" name="quantity" min="1" required>
+
+        <label for="price">Price per Item</label>
+        <input type="number" step="0.01" id="price" name="price" min="0" required>
+
+        <button type="submit" class="btn-primary">Add Inventory</button>
+    </form>
+</div>
+{% endblock %}

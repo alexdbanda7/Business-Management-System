@@ -1,0 +1,94 @@
+{% extends "base.html" %}
+
+{% block title %}Inventory - Mas Art{% endblock %}
+
+{% block content %}
+<h2>Inventory</h2>
+
+<!-- Search Form -->
+<h3>Search Inventory</h3>
+<form method="GET" action="{{ url_for('view_inventory') }}">
+    <label for="search_term">Search Item:</label>
+    <input type="text" name="search_term"
+           placeholder="Enter item name..."
+           value="{{ request.args.get('search_term', '') }}" />
+    <button type="submit">Search</button>
+</form>
+
+<hr>
+
+<!-- Add New Item -->
+<h3>Add New Item</h3>
+<form method="POST" action="{{ url_for('add_inventory') }}">
+    <label>Item Name:</label>
+    <input type="text" name="item_name" required />
+
+    <label>Quantity:</label>
+    <input type="number" name="quantity" min="1" required />
+
+    <label>Price:</label>
+    <input type="number" step="0.01" name="price" min="0" required />
+
+    <button type="submit">Add Item</button>
+</form>
+
+<hr>
+
+<!-- Inventory Table -->
+<h3>Inventory List</h3>
+<table>
+    <thead>
+        <tr>
+            <th>Item Name</th>
+            <th>Quantity</th>
+            <th>Price</th>
+            <th>Sell Item</th>
+            {% if session['role'] == 'admin' %}
+            <th>Delete</th>
+            {% endif %}
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in items %}
+        <tr>
+            <td>{{ item['item_name'] }}</td>
+            <td>{{ item['quantity'] }}</td>
+            <td>MWK {{ "%.2f"|format(item['price']) }}</td>
+
+            <!-- Mark as Sold -->
+            <td>
+                <form method="POST"
+                      action="{{ url_for('mark_item_sold', item_id=item['id']) }}">
+                    <input type="number"
+                           name="quantity"
+                           placeholder="Qty"
+                           required
+                           min="1"
+                           max="{{ item['quantity'] }}"
+                           style="width:70px;" />
+
+                    <input type="text"
+                           name="customer_name"
+                           placeholder="Customer"
+                           required
+                           style="width:100px;" />
+
+                    <button type="submit">Sell</button>
+                </form>
+            </td>
+
+            <!-- Delete Inventory (Admin Only) -->
+            {% if session['role'] == 'admin' %}
+            <td>
+                <form method="POST"
+                      action="{{ url_for('delete_inventory', item_id=item['id']) }}"
+                      onsubmit="return confirm('Are you sure you want to delete this item?');">
+                    <button type="submit" style="background:red; color:white;">Delete</button>
+                </form>
+            </td>
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}
