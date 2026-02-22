@@ -1,14 +1,16 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Dashboard - Mas Art</title>
+    <title>BMS Main Dashboard</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
 
 <div class="sidebar">
-    <h2>Mas Art</h2>
+    <div class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="Logo">
+    </div>
     <a href="/dashboard">Dashboard</a>
     <a href="/sales">Sales</a>
     <a href="/expenses">Expenses</a>
@@ -21,22 +23,25 @@
 
     <!-- Summary Cards -->
     <div class="card-container">
-    <div class="card sales">
-        <h3>Total Sales</h3>
-        <div class="metric">MWK {{ total_sales }}</div>
-    </div>
-    <div class="card expenses">
-        <h3>Total Expenses</h3>
-        <div class="metric">MWK {{ total_expenses }}</div>
-    </div>
-    <div class="card profit">
-        <h3>Net Profit</h3>
-        <div class="metric">MWK {{ net_profit }}</div>
-    </div>
+        <div class="card sales">
+            <h3>Total Sales</h3>
+            <div class="metric">MWK {{ total_sales }}</div>
+        </div>
+        <div class="card income">
+            <h3>Total Income</h3>
+            <div class="metric">MWK {{ total_income }}</div>
+        </div>
+        <div class="card expenses">
+            <h3>Total Expenses</h3>
+            <div class="metric">MWK {{ total_expenses }}</div>
+        </div>
+        <div class="card profit">
+            <h3>Net Profit</h3>
+            <div class="metric">MWK {{ net_profit }}</div>
+        </div>
     </div>
 
-
-<!-- Low Stock Alert -->
+    <!-- Low Stock Alert -->
     {% if low_stock %}
     <div class="low-stock">
         <h3>Low Stock Items</h3>
@@ -50,19 +55,18 @@
     </div>
     {% endif %}
 
-
-<!-- Charts Section -->
+    <!-- Charts Section -->
     <div class="charts-grid">
 
-        <!-- Bar Chart -->
+        <!-- Bar Chart: Monthly Financials -->
         <div class="chart-card">
-            <h3>Monthly Sales (Bar Chart)</h3>
+            <h3>Monthly Financials (Bar Chart)</h3>
             <canvas id="barChart"></canvas>
         </div>
 
-        <!-- Line Chart -->
+        <!-- Line Chart: Sales Trend -->
         <div class="chart-card">
-            <h3>Sales Trend (Line Graph)</h3>
+            <h3>Sales Trend</h3>
             <canvas id="lineChart"></canvas>
         </div>
 
@@ -72,16 +76,19 @@
             <canvas id="expenseChart"></canvas>
         </div>
 
-        <!-- Pie Chart -->
+        <!-- Income Line Chart -->
+        <div class="chart-card">
+            <h3>Income Trend</h3>
+            <canvas id="incomeChart"></canvas>
+        </div>
+
+        <!-- Pie Chart: Financial Distribution -->
         <div class="chart-card">
             <h3>Financial Distribution</h3>
             <canvas id="pieChart"></canvas>
         </div>
 
     </div>
-
-
-
 </div>
 
 <script id="chart-data" type="application/json">
@@ -89,7 +96,9 @@
     "months": {{ months | tojson }},
     "sales": {{ sales_data | tojson }},
     "expenses": {{ expenses_data | tojson }},
+    "income": {{ income_data | tojson }},
     "total_sales": {{ total_sales | tojson }},
+    "total_income": {{ total_income | tojson }},
     "total_expenses": {{ total_expenses | tojson }},
     "net_profit": {{ net_profit | tojson }}
 }
@@ -100,143 +109,88 @@ const chartData = JSON.parse(document.getElementById('chart-data').textContent);
 
 // Detect dark mode
 const isDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
 const textColor = isDark ? '#ffffff' : '#111827';
 const gridColor = isDark ? '#334155' : '#e5e7eb';
 
 // Currency formatter
-const currencyFormat = (value) => {
-    return 'MWK ' + value.toLocaleString();
-};
+const currencyFormat = (value) => 'MWK ' + value.toLocaleString();
 
-// Common options
+// Common chart options
 const commonOptions = {
     responsive: true,
-    animation: {
-        duration: 1500,
-        easing: 'easeInOutQuart'
-    },
+    animation: { duration: 1500, easing: 'easeInOutQuart' },
     plugins: {
-        legend: {
-            labels: {
-                color: textColor
-            }
-        },
+        legend: { labels: { color: textColor } },
         tooltip: {
             callbacks: {
-                label: function(context) {
-                    return currencyFormat(context.raw);
-                }
+                label: function(context) { return currencyFormat(context.raw); }
             }
         }
     },
     scales: {
-        x: {
-            ticks: { color: textColor },
-            grid: { color: gridColor }
-        },
-        y: {
-            ticks: {
-                color: textColor,
-                callback: function(value) {
-                    return currencyFormat(value);
-                }
-            },
-            grid: { color: gridColor }
+        x: { ticks: { color: textColor }, grid: { color: gridColor } },
+        y: { 
+            ticks: { color: textColor, callback: v => currencyFormat(v) }, 
+            grid: { color: gridColor } 
         }
     }
 };
 
-// 📊 BAR CHART (Sales)
+// ----------------- BAR CHART (Monthly Financials) -----------------
 new Chart(document.getElementById('barChart'), {
     type: 'bar',
     data: {
         labels: chartData.months,
-        datasets: [{
-            label: 'Monthly Sales',
-            data: chartData.sales,
-            backgroundColor: '#3b82f6',
-            borderRadius: 6
-        }]
+        datasets: [
+            { label: 'Sales', data: chartData.sales, backgroundColor: '#3b82f6', borderRadius: 6 },
+            { label: 'Expenses', data: chartData.expenses, backgroundColor: '#ef4444', borderRadius: 6 },
+            { label: 'Income', data: chartData.income, backgroundColor: '#fbbf24', borderRadius: 6 }
+        ]
     },
     options: commonOptions
 });
 
-// 📈 SALES LINE CHART
+// ----------------- LINE CHART (Sales Trend) -----------------
 new Chart(document.getElementById('lineChart'), {
     type: 'line',
-    data: {
-        labels: chartData.months,
-        datasets: [{
-            label: 'Sales Trend',
-            data: chartData.sales,
-            borderColor: '#16a34a',
-            backgroundColor: 'rgba(22,163,74,0.2)',
-            tension: 0.4,
-            fill: true
-        }]
-    },
+    data: { labels: chartData.months, datasets: [{ label: 'Sales Trend', data: chartData.sales, borderColor: '#16a34a', backgroundColor: 'rgba(22,163,74,0.2)', fill: true, tension: 0.4 }] },
     options: commonOptions
 });
 
-// 💸 EXPENSES LINE CHART
+// ----------------- LINE CHART (Expenses Trend) -----------------
 new Chart(document.getElementById('expenseChart'), {
     type: 'line',
-    data: {
-        labels: chartData.months,
-        datasets: [{
-            label: 'Expenses Trend',
-            data: chartData.expenses,
-            borderColor: '#ef4444',
-            backgroundColor: 'rgba(239,68,68,0.2)',
-            tension: 0.4,
-            fill: true
-        }]
-    },
+    data: { labels: chartData.months, datasets: [{ label: 'Expenses Trend', data: chartData.expenses, borderColor: '#ef4444', backgroundColor: 'rgba(239,68,68,0.2)', fill: true, tension: 0.4 }] },
+    options: commonOptions
+});
+// ---------------- INCOME LINE CHART ----------------
+new Chart(document.getElementById('incomeChart'), {
+    type: 'line',
+    data: { labels: chartData.months, datasets: [{ label: 'Income', data: chartData.income, borderColor: '#fbbf24', backgroundColor: 'rgba(251,191,36,0.2)', fill: true, tension: 0.4 }] },
     options: commonOptions
 });
 
-// 🥧 PIE CHART
+// ----------------- PIE CHART (Financial Distribution) -----------------
 new Chart(document.getElementById('pieChart'), {
     type: 'doughnut',
     data: {
-        labels: ['Total Sales', 'Total Expenses', 'Net Profit'],
+        labels: ['Total Income', 'Total Expenses', 'Net Profit'],
         datasets: [{
-            data: [
-                chartData.total_sales,
-                chartData.total_expenses,
-                chartData.net_profit
-            ],
-            backgroundColor: [
-                '#3b82f6',
-                '#ef4444',
-                '#16a34a'
-            ]
+            data: [chartData.total_income, chartData.total_expenses, chartData.net_profit],
+            backgroundColor: ['#fbbf24', '#ef4444', '#16a34a'],
+            borderWidth: 1
         }]
     },
     options: {
         responsive: true,
-        animation: {
-            duration: 1500
-        },
+        animation: { duration: 1500 },
         plugins: {
-            legend: {
-                labels: {
-                    color: textColor
-                }
-            },
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return currencyFormat(context.raw);
-                    }
-                }
-            }
+            legend: { labels: { color: textColor } },
+            tooltip: { callbacks: { label: ctx => 'MWK ' + ctx.raw.toLocaleString() } }
         }
     }
 });
 </script>
-
 
 </body>
 </html>

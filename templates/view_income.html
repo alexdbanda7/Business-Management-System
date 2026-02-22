@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}View Income{% endblock %}
+
+{% block content %}
+<h1>Income Records</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Description</th>
+            <th>Amount (MWK)</th>
+            <th>Category</th>
+            <th>Date</th>
+            <th>Recorded By</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for income in incomes %}
+        <tr>
+            <td>{{ income.id }}</td>
+            <td>{{ income.description }}</td>
+            <td>{{ income.amount }}</td>
+            <td>{{ income.category_name }}</td>
+            <td>{{ income.date }}</td>
+            <td>{{ income.recorded_by or '-' }}</td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="6">No income records found.</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

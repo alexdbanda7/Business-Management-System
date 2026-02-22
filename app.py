@@ -39,7 +39,7 @@ def init_db():
     with sqlite3.connect(DATABASE) as conn:
         cursor = conn.cursor()
 
-        # Users table
+        # ---------------- Users table ----------------
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS users (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -49,7 +49,7 @@ def init_db():
             )
         ''')
 
-        # Inventory table
+        # ---------------- Inventory table ----------------
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS inventory (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,7 +59,7 @@ def init_db():
             )
         ''')
 
-        # Sales table
+        # ---------------- Sales table ----------------
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS sales (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,7 +72,7 @@ def init_db():
             )
         ''')
 
-        # Expenses table
+        # ---------------- Expenses table ----------------
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS expenses (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -83,7 +83,38 @@ def init_db():
             )
         ''')
 
-        # Categories table
+        # ---------------- Income Categories table ----------------
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS income_categories (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT UNIQUE NOT NULL
+            )
+        ''')
+
+        # Insert default income categories if empty
+        cursor.execute("SELECT COUNT(*) FROM income_categories")
+        if cursor.fetchone()[0] == 0:
+            default_income_categories = ['Sales', 'Services', 'Other']
+            cursor.executemany(
+                "INSERT INTO income_categories (name) VALUES (?)",
+                [(c,) for c in default_income_categories]
+            )
+
+        # ---------------- Income table ----------------
+        # Use 'category_id' referencing income_categories
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS income (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                description TEXT NOT NULL,
+                amount REAL NOT NULL,
+                category_id INTEGER NOT NULL,
+                date TEXT DEFAULT CURRENT_TIMESTAMP,
+                recorded_by TEXT,
+                FOREIGN KEY(category_id) REFERENCES income_categories(id)
+            )
+        ''')
+
+        # ---------------- Categories table ----------------
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS categories (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -91,7 +122,7 @@ def init_db():
             )
         ''')
 
-        # Insert default categories
+        # Insert default expense categories
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
             default_categories = ['Utilities', 'Rent', 'Supplies', 'Transport', 'Misc']
@@ -112,8 +143,6 @@ def init_db():
             print("\n✅ Default admin created:")
             print("   Username: admin")
             print("   Password: admin123\n")
-
-
 # -------------------------
 # Helper Functions
 # -------------------------
@@ -297,18 +326,22 @@ def dashboard():
     conn = get_db_connection()
     cursor = conn.cursor()
 
-    # Total Sales
+    # ---------------- Total Sales ----------------
     cursor.execute("SELECT SUM(total_price) FROM sales")
     total_sales = cursor.fetchone()[0] or 0
 
-    # Total Expenses
+    # ---------------- Total Expenses ----------------
     cursor.execute("SELECT SUM(amount) FROM expenses")
     total_expenses = cursor.fetchone()[0] or 0
 
-    # Net Profit
-    net_profit = total_sales - total_expenses
+    # ---------------- Total Income ----------------
+    cursor.execute("SELECT SUM(amount) FROM income")
+    total_income = cursor.fetchone()[0] or 0
 
-    # Monthly Sales Data (for chart)
+    # ---------------- Net Profit ----------------
+    net_profit = (total_sales + total_income) - total_expenses
+
+    # ---------------- Monthly Sales Data ----------------
     cursor.execute("""
         SELECT strftime('%Y-%m', date) as month,
                SUM(total_price)
@@ -316,11 +349,11 @@ def dashboard():
         GROUP BY month
         ORDER BY month
     """)
-    monthly_data = cursor.fetchall()
-    months = [row[0] for row in monthly_data]
-    sales_data = [row[1] for row in monthly_data]
+    monthly_sales_data = cursor.fetchall()
+    months = [row[0] for row in monthly_sales_data]
+    sales_data = [row[1] for row in monthly_sales_data]
 
-    # Monthly Expenses Data (for chart)
+    # ---------------- Monthly Expenses Data ----------------
     cursor.execute("""
         SELECT strftime('%Y-%m', date) as month,
                SUM(amount)
@@ -328,10 +361,23 @@ def dashboard():
         GROUP BY month
         ORDER BY month
     """)
-    expenses_monthly_data = cursor.fetchall()
-    expenses_data = [row[1] for row in expenses_monthly_data]
+    monthly_expenses_data = cursor.fetchall()
+    expenses_dict = {row[0]: row[1] for row in monthly_expenses_data}
+    expenses_data = [expenses_dict.get(month, 0) for month in months]  # align with months
 
-    # Low Stock Items (<=5)
+    # ---------------- Monthly Income Data ----------------
+    cursor.execute("""
+        SELECT strftime('%Y-%m', date) as month,
+               SUM(amount)
+        FROM income
+        GROUP BY month
+        ORDER BY month
+    """)
+    monthly_income_data = cursor.fetchall()
+    income_dict = {row[0]: row[1] for row in monthly_income_data}
+    income_data = [income_dict.get(month, 0) for month in months]  # align with months
+
+    # ---------------- Low Stock Items (<=5) ----------------
     cursor.execute("""
         SELECT item_name, quantity
         FROM inventory
@@ -345,14 +391,15 @@ def dashboard():
         'dashboard.html',
         user=session.get('user'),
         total_sales=total_sales,
+        total_income=total_income,
         total_expenses=total_expenses,
         net_profit=net_profit,
         months=months,
         sales_data=sales_data,
         expenses_data=expenses_data,
+        income_data=income_data,   # pass income_data for bar chart
         low_stock=low_stock
     )
-
 # -------------------------
 # Sales Module
 # -------------------------
@@ -759,6 +806,55 @@ def delete_inventory(item_id):
     flash("Inventory item deleted successfully!", "success")
     return redirect(url_for('view_inventory'))
 
+# -----------------------------------
+# Add income
+# -----------------------------------
+@app.route('/add_income', methods=['GET', 'POST'])
+def add_income():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Get all categories for the dropdown
+    cursor.execute("SELECT id, name FROM income_categories ORDER BY name")
+    categories = cursor.fetchall()
+
+    if request.method == 'POST':
+        description = request.form['description']
+        amount = float(request.form['amount'])
+        category_id = int(request.form['category_id'])
+        recorded_by = session.get('user')
+
+        cursor.execute(
+            "INSERT INTO income (description, amount, category_id, recorded_by) VALUES (?, ?, ?, ?)",
+            (description, amount, category_id, recorded_by)
+        )
+        conn.commit()
+        conn.close()
+        flash('Income record added successfully!', 'success')
+        return redirect(url_for('view_income'))
+
+    conn.close()
+    return render_template('add_income.html', categories=categories)
+
+# -----------------------------------
+# View income
+# -----------------------------------
+@app.route('/view_income')
+def view_income():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Join with categories to get the category name
+    cursor.execute("""
+        SELECT i.id, i.description, i.amount, c.name as category_name, i.date, i.recorded_by
+        FROM income i
+        JOIN income_categories c ON i.category_id = c.id
+        ORDER BY i.date DESC
+    """)
+    incomes = cursor.fetchall()
+    conn.close()
+
+    return render_template('view_income.html', incomes=incomes)
 
 # -------------------------
 # Run App

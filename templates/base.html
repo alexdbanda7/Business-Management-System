@@ -2,26 +2,51 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}Mas Art System{% endblock %}</title>
+    <title>{% block title %}IDM{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
 
-<!-- Sidebar -->
+<<!-- Sidebar -->
 <div class="sidebar">
-    <h2>Mas Art</h2>
+    <div class="logo">
+        <img src="{{ url_for('static', filename='assets/logo.png') }}" alt="MasArt System Logo">
+    </div>
+
     {% if session.get('user') %}
-        <p class="user-info">Logged in as: {{ session['user'] }} ({{ session['role'] }})</p>
+        <p class="user-info">
+            Logged in as: {{ session['user'] }} ({{ session['role'] }})
+        </p>
     {% else %}
         <p class="user-info">Not logged in</p>
     {% endif %}
-    <a href="{{ url_for('dashboard') }}">Dashboard</a>
-    <a href="{{ url_for('view_sales') }}">Sales</a>
-    <a href="{{ url_for('view_expenses') }}">Expenses</a>
-    <a href="{{ url_for('view_inventory') }}">Inventory</a>
+
+    <!-- ----------------- Operations ----------------- -->
+    <div class="sidebar-section">
+        <h4>Operations</h4>
+        <a href="{{ url_for('dashboard') }}">Dashboard</a>
+        <a href="{{ url_for('view_sales') }}">Sales</a>
+        <a href="{{ url_for('view_inventory') }}">Inventory</a>
+    </div>
+
+    <!-- ----------------- Finance ----------------- -->
+    <div class="sidebar-section">
+        <h4>Finance</h4>
+        <a href="{{ url_for('view_expenses') }}">View Expenses</a>
+        <a href="{{ url_for('add_expense') }}">Add Expense</a>
+        <a href="{{ url_for('view_income') }}">View Income</a>
+        <a href="{{ url_for('add_income') }}">Add Income</a>
+        <a href="{{ url_for('generate_report') }}">Generate Report</a>
+    </div>
+
+    <!-- ----------------- Admin ----------------- -->
     {% if session.get('role') == 'admin' %}
-        <a href="{{ url_for('create_user') }}">Admin Panel</a>
+    <div class="sidebar-section">
+        <h4>Admin</h4>
+        <a href="{{ url_for('create_user') }}">User Management</a>
+    </div>
     {% endif %}
+
     <a href="{{ url_for('logout') }}">Logout</a>
 </div>
 
@@ -29,7 +54,7 @@
 <div class="content">
     <header>
         <div class="header-left">
-            <h1>Mas Art System</h1>
+            <h1>Business Management System</h1>
         </div>
         <nav class="header-nav">
             <a href="{{ url_for('dashboard') }}">Dashboard</a>

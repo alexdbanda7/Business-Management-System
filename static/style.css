@@ -17,16 +17,42 @@ body {
   padding-top: 30px;
   box-sizing: border-box;
 }
-
-.sidebar h2 {
-  color: white;
-  text-align: center;
-  margin-bottom: 40px;
-  font-weight: bold;
-  font-size: 22px;
+.sidebar-section {
+    color: #9ca3af;
+    font-size: 14px;
+    text-transform: uppercase;
+    margin: 20px 0 5px 20px;
+    letter-spacing: 1px;
 }
 
-.sidebar a, .sidebar nav a {
+/* Remove old h2 styling since logo replaced it */
+.sidebar h2 {
+  display: none;
+}
+
+/* ---------------- Logo ---------------- */
+.sidebar .logo {
+  text-align: center;
+  padding: 10px 0 20px 0;
+}
+
+.sidebar .logo img {
+  width: 120px;
+  height: auto;
+}
+
+/* ---------------- User Info ---------------- */
+.sidebar .user-info {
+  text-align: center;
+  color: #d1d5db;
+  font-size: 14px;
+  margin-bottom: 25px;
+  padding: 0 10px;
+}
+
+/* ---------------- Sidebar Links ---------------- */
+.sidebar a, 
+.sidebar nav a {
   display: block;
   color: #d1d5db;
   padding: 12px 25px;
@@ -36,9 +62,15 @@ body {
   transition: background-color 0.3s ease;
 }
 
-.sidebar a:hover, .sidebar nav a:hover {
+.sidebar a:hover, 
+.sidebar nav a:hover {
   background-color: #374151;
   color: white;
+}
+
+.card.income {
+    background-color: #fbbf24;  /* yellow/orange */
+    color: #111827;
 }
 
 /* ---------------- Container ---------------- */
@@ -55,7 +87,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  min-height: 100vh; /* full height */
+  min-height: 100vh;
 }
 
 /* ---------------- Cards ---------------- */
