@@ -725,6 +725,73 @@ def add_expense():
 
     return render_template('add_expense.html', categories=categories)
 
+
+# -------------------------
+# Edit Expense (Admin Only)
+# -------------------------
+@app.route('/edit_expense/<int:expense_id>', methods=['GET', 'POST'])
+@admin_required
+def edit_expense(expense_id):
+
+    # 🔐 Admin Protection
+    if session.get('role') != 'admin':
+        flash("Unauthorized action!", "danger")
+        return redirect(url_for('view_expenses'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    # Fetch expense first
+    cursor.execute("SELECT * FROM expenses WHERE id = ?", (expense_id,))
+    expense = cursor.fetchone()
+
+    # If expense doesn't exist
+    if not expense:
+        conn.close()
+        flash("Expense not found.", "danger")
+        return redirect(url_for('view_expenses'))
+
+    if request.method == 'POST':
+        category = request.form['category']
+        description = request.form['description']
+        amount = request.form['amount']
+
+        cursor.execute("""
+            UPDATE expenses
+            SET category = ?, description = ?, amount = ?
+            WHERE id = ?
+        """, (category, description, amount, expense_id))
+
+        conn.commit()
+        conn.close()
+
+        flash("Expense updated successfully!", "success")
+        return redirect(url_for('view_expenses'))
+
+    conn.close()
+    return render_template('edit_expense.html', expense=expense)
+
+# -------------------------
+# Delete Expense (Admin Only)
+# -------------------------
+@app.route('/delete_expense/<int:expense_id>', methods=['POST'])
+@admin_required
+def delete_expense(expense_id):
+
+    if session.get('role') != 'admin':
+        flash("Unauthorized action!", "danger")
+        return redirect(url_for('view_expenses'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+
+    cursor.execute("DELETE FROM expenses WHERE id = ?", (expense_id,))
+    conn.commit()
+    conn.close()
+
+    flash("Expense deleted successfully!", "success")
+    return redirect(url_for('view_expenses'))
+
 # -------------------------
 # Inventory Module
 # -------------------------

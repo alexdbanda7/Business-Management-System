@@ -562,3 +562,66 @@ h2 {
   font-size: 18px;
   color: #6c757d;
 }
+
+/* Edit Button */
+button.btn-edit {
+    background-color: #f59e0b !important;
+    color: white;
+}
+
+button.btn-edit:hover {
+    background-color: #d97706 !important;
+}
+
+/* Delete Button */
+button.btn-delete {
+    background-color: #dc2626 !important;
+    color: white;
+}
+
+button.btn-delete:hover {
+    background-color: #b91c1c !important;
+}
+.date-filter {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.date-filter label {
+    margin: 0 5px;
+    font-weight: 600;
+}
+
+.date-filter input {
+    padding: 5px 8px;
+    margin: 0 5px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+}
+
+.date-filter button, .date-filter a {
+    padding: 6px 15px;
+    margin-left: 5px;
+    border-radius: 5px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.date-filter .btn-primary {
+    background-color: #062f86;
+    color: white;
+    border: none;
+}
+
+.date-filter .btn-primary:hover {
+    background-color: #1e40af;
+}
+
+.date-filter .btn-secondary {
+    background-color: #6b7280;
+    color: white;
+}
+
+.date-filter .btn-secondary:hover {
+    background-color: #4b5563;
+}
