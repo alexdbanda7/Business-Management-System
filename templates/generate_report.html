@@ -4,7 +4,14 @@
 
 {% block content %}
 <div class="form-container report-form">
-  <h1>Generate Sales Report</h1>
+
+  <!-- Logo -->
+  <img src="{{ url_for('static', filename='assets/logo.png') }}" 
+       alt="MasArt System Logo"
+       class="form-logo">
+
+  <h3>Generate Sales Report</h3>
+
   <form method="POST" novalidate>
     <label for="report_type">Select Report Type:</label>
     <select name="report_type" id="report_type" required>
@@ -26,6 +33,14 @@
   </form>
 </div>
 
+<style>
+.form-logo {
+    width: 110px;          /* slightly larger for inside pages */
+    display: block;
+    margin: 0 auto 15px auto;
+}
+</style>
+
 <script>
   const reportTypeSelect = document.getElementById('report_type');
   const customDatesDiv = document.getElementById('custom-dates');
@@ -38,4 +53,5 @@
     }
   });
 </script>
+
 {% endblock %}

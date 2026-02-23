@@ -13,7 +13,7 @@ body {
   left: 0;
   width: 220px;
   height: 100vh;
-  background-color: #1f2937;
+  background-color: #283649;
   padding-top: 30px;
   box-sizing: border-box;
 }
@@ -271,7 +271,13 @@ nav a:hover, .header-nav a:hover {
 
 /* ---------------- Headings ---------------- */
 h2 {
-  color: #062f86;
+  color: rgb(245, 240, 232);
+  margin-bottom: 15px;
+  text-align: center;
+}
+
+h3 {
+  color: rgb(22, 23, 83);
   margin-bottom: 15px;
   text-align: center;
 }
@@ -295,7 +301,7 @@ h2 {
 
 .flash.danger {
   background-color: #f8d7da;
-  color: #721c24;
+  color: #a10f1e;
 }
 
 .flash.warning {

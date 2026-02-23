@@ -3,24 +3,109 @@
 <head>
     <title>Login - Mas Art</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
     <style>
-        /* Optional quick styling for flash messages */
+        body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            background: #1e293b;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .form-box {
+            background: #ffffff;
+            padding: 40px 35px;
+            border-radius: 12px;
+            width: 320px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+            text-align: center;
+        }
+
+        .login-logo {
+            width: 200px;
+            height: auto;
+            display: block;
+            margin: 0 auto 15px auto;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+            color: #333;
+        }
+
+        label {
+            display: block;
+            text-align: left;
+            margin-bottom: 5px;
+            font-size: 14px;
+            color: #555;
+        }
+
+        input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            outline: none;
+            transition: 0.3s;
+        }
+
+        input:focus {
+            border-color: #2a5298;
+            box-shadow: 0 0 5px rgba(42, 82, 152, 0.3);
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border: none;
+            border-radius: 6px;
+            background-color: #2a5298;
+            color: white;
+            font-size: 15px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        button:hover {
+            background-color: #1e3c72;
+        }
+
         .flash {
             padding: 10px;
-            margin-bottom: 10px;
-            border-radius: 5px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            font-size: 14px;
         }
-        .flash.success { background-color: #d4edda; color: #155724; }
-        .flash.error   { background-color: #f8d7da; color: #721c24; }
+
+        .flash.success {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .flash.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
     </style>
-    
 </head>
-<body style="display:flex; justify-content:center; align-items:center; height:100vh;">
+
+<body>
 
 <div class="form-box">
-    <h2>Mas Art Business System</h2>
 
-    <!-- Display flash messages -->
+    <img src="{{ url_for('static', filename='assets/logo.png') }}" 
+         alt="MasArt System Logo"
+         class="login-logo">
+
+    <h2>Business Management System</h2>
+
+    <!-- Flash Messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
             {% for category, message in messages %}
@@ -38,6 +123,7 @@
 
         <button type="submit">Login</button>
     </form>
+
 </div>
 
 </body>

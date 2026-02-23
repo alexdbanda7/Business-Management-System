@@ -6,10 +6,16 @@
 
 {% block content %}
 <div class="report-container">
+
+  <!-- Logo -->
+  <img src="{{ url_for('static', filename='assets/logo.png') }}" 
+       alt="MasArt System Logo"
+       class="report-logo">
+
   <h1>{{ report_type | capitalize }} Sales Report</h1>
 
   {% if sales_data %}
-    <a href="{{ url_for('download_report_pdf', report_type=report_type) }}" class="btn-pdf">Download PDF</a>
+
     <table class="report-table">
       <thead>
         <tr>
@@ -30,8 +36,48 @@
         {% endfor %}
       </tbody>
     </table>
+
+    <!-- Download Button Under Table -->
+    <div class="download-wrapper">
+      <a href="{{ url_for('download_report_pdf', report_type=report_type) }}" 
+         class="btn-pdf">
+         Download PDF
+      </a>
+    </div>
+
   {% else %}
     <p class="no-data">No data found for the selected report type and period.</p>
   {% endif %}
 </div>
+
+<style>
+.report-logo {
+    width: 130px;
+    display: block;
+    margin: 0 auto 20px auto;
+}
+
+.report-container {
+    text-align: center;
+}
+
+.download-wrapper {
+    margin-top: 20px;
+}
+
+.btn-pdf {
+    display: inline-block;
+    padding: 10px 18px;
+    background-color: #2a5298;
+    color: white;
+    text-decoration: none;
+    border-radius: 6px;
+    transition: 0.3s;
+}
+
+.btn-pdf:hover {
+    background-color: #1e3c72;
+}
+</style>
+
 {% endblock %}

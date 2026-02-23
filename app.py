@@ -7,6 +7,12 @@ from datetime import datetime, timedelta
 from flask import make_response
 from xhtml2pdf import pisa
 from io import BytesIO
+import os
+from werkzeug.utils import secure_filename
+import qrcode
+from io import BytesIO
+import random
+from flask import send_file, url_for
 
 app = Flask(__name__)
 app.secret_key = "masart_secret_key_123"
@@ -125,7 +131,7 @@ def init_db():
         # Insert default expense categories
         cursor.execute("SELECT COUNT(*) FROM categories")
         if cursor.fetchone()[0] == 0:
-            default_categories = ['Utilities', 'Rent', 'Supplies', 'Transport', 'Misc']
+            default_categories = ['Utilities', 'Rent', 'Maintainus', 'Transport', 'Misc']
             cursor.executemany(
                 "INSERT INTO categories (name) VALUES (?)",
                 [(c,) for c in default_categories]
@@ -260,6 +266,7 @@ def logout():
     session.pop('role', None)
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
+
 # -------------------------
 # Create User
 # -------------------------
@@ -720,13 +727,20 @@ def generate_report():
 # ------------------------------
 # Routes for Report download
 # ------------------------------
+# ------------------------------
+# Route: Download Sales Report PDF
+# ------------------------------
 @app.route('/download_report_pdf/<report_type>', methods=['GET'])
-@admin_required
 def download_report_pdf(report_type):
+    # Ensure user is logged in
+    if 'user' not in session:
+        return "Access denied: Please log in first.", 403
+
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
+            # Fetch sales data
             if report_type == 'daily':
                 cursor.execute("""
                     SELECT i.item_name, s.quantity, s.total_price, s.date
@@ -748,27 +762,56 @@ def download_report_pdf(report_type):
                     JOIN inventory i ON s.item_id = i.id
                     WHERE s.date >= DATE('now', 'start of month')
                 """)
+            else:
+                return "Invalid report type", 400
 
             sales_data = cursor.fetchall()
 
-        # Render HTML for PDF
-        rendered = render_template('report.html', sales_data=sales_data, report_type=report_type)
+        # Generate unique report ID
+        report_id = f"MAS-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
 
-        # Create PDF using xhtml2pdf
-        pdf = BytesIO()
-        pisa_status = pisa.CreatePDF(rendered, dest=pdf)
-        pdf.seek(0)
+        # Absolute paths
+        logo_path = os.path.join(app.root_path, 'static', 'assets', 'logo.png')
+        signature_path = os.path.join(app.root_path, 'static', 'signatures', 'authorized_signature.png')
+
+        # Generate QR code
+        verification_url = f"https://yourdomain.com/verify/{report_id}"
+        qr_img = qrcode.make(verification_url)
+        qr_folder = os.path.join(app.root_path, 'static', 'qr')
+        os.makedirs(qr_folder, exist_ok=True)
+        qr_path = os.path.join(qr_folder, f'{report_id}.png')
+        qr_img.save(qr_path)
+
+        # Render PDF template
+        rendered = render_template(
+            'report_pdf.html',
+            sales_data=sales_data,
+            report_type=report_type,
+            report_id=report_id,
+            current_date=datetime.now().strftime("%d %B %Y"),
+            logo_path=logo_path,
+            qr_code=qr_path,
+            signature_image=signature_path if os.path.exists(signature_path) else ""
+        )
+
+        # Generate PDF
+        pdf_bytes = BytesIO()
+        pisa_status = pisa.CreatePDF(rendered, dest=pdf_bytes)
+        pdf_bytes.seek(0)
 
         if pisa_status.err:
-            flash("Error generating PDF", "error")
-            return redirect(url_for('generate_report'))
+            return f"PDF generation failed: {pisa_status.err}", 500
 
-        return Response(pdf, mimetype='application/pdf',
-                        headers={"Content-Disposition": 'attachment;filename=sales_report.pdf'})
+        return Response(
+            pdf_bytes,
+            mimetype='application/pdf',
+            headers={"Content-Disposition": f'attachment;filename=sales_report_{report_id}.pdf'}
+        )
 
     except Exception as e:
-        flash(f"Error generating PDF: {e}", "error")
-        return redirect(url_for('generate_report'))
+        import traceback
+        traceback.print_exc()
+        return f"Exception during PDF generation: {e}", 500
 
 # --------------------------------
 # Route to mark an item as sold
@@ -1062,6 +1105,23 @@ def view_income():
     conn.close()
 
     return render_template('view_income.html', incomes=incomes)
+
+
+# -----------------------------------
+# View income
+# -----------------------------------
+UPLOAD_FOLDER = 'static/signatures'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+@app.route('/upload-signature', methods=['GET', 'POST'])
+def upload_signature():
+    if request.method == 'POST':
+        file = request.files['signature']
+        if file:
+            filename = secure_filename("authorized_signature.png")
+            file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
+            flash("Signature uploaded successfully!", "success")
+    return render_template("upload_signature.html")
 
 # -------------------------
 # Run App

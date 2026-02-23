@@ -2,27 +2,148 @@
 <html>
 <head>
     <style>
-        body { font-family: Arial, sans-serif; }
-        h2 { text-align: center; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
-        th { background-color: #062f86; color: #fff; }
-        tr:nth-child(even) { background-color: #f2f2f2; }
+        @page {
+            size: A4;
+            margin: 40px;
+            counter-increment: page;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            color: #333;
+            position: relative;
+        }
+
+        /* Watermark Logo */
+        .watermark {
+            position: fixed;
+            top: 35%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.05;
+            width: 400px;
+            z-index: -1;
+        }
+
+        /* Header */
+        .header-table {
+            width: 100%;
+            margin-bottom: 20px;
+        }
+
+        .logo {
+            width: 150px;
+        }
+
+        .company-info {
+            text-align: right;
+            font-size: 12px;
+        }
+
+        h2 {
+            text-align: center;
+            margin-top: 20px;
+            color: #062f86;
+        }
+
+        .meta {
+            text-align: center;
+            font-size: 13px;
+            margin-bottom: 20px;
+        }
+
+        /* Sales Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            font-size: 13px;
+        }
+
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #062f86;
+            color: #fff;
+        }
+
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* Summary */
+        .summary {
+            margin-top: 25px;
+            text-align: right;
+            font-weight: bold;
+        }
+
+        /* Signature + QR */
+        .signature-section {
+            margin-top: 60px;
+            width: 100%;
+        }
+
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            text-align: center;
+            font-size: 11px;
+            color: #777;
+        }
+
+        .page-number:after {
+            content: "Page " counter(page);
+        }
     </style>
 </head>
 <body>
+
+    <!-- Watermark -->
+    <img src="{{ url_for('static', filename='assets/logo.png') }}" class="watermark">
+
+    <!-- Header -->
+    <table class="header-table">
+        <tr>
+            <td>
+                <img src="{{ url_for('static', filename='assets/logo.png') }}" class="logo">
+            </td>
+            <td class="company-info">
+                <strong>Mas Art Business Management System</strong><br>
+                P.O Box 31808<br>
+                Lilongwe, Malawi<br>
+                Email: info@masartngs.com<br>
+                Phone: +265 999 921 447<br>
+                Report ID: {{ report_id }}<br>
+                Generated: {{ current_date }}
+            </td>
+        </tr>
+    </table>
+
+    <!-- Report Title -->
     <h2>{{ report_type | capitalize }} Sales Report</h2>
+    <div class="meta">Report Period: {{ report_type | capitalize }}</div>
+
+    <!-- Sales Table -->
     <table>
         <thead>
             <tr>
                 <th>Item Name</th>
                 <th>Quantity</th>
-                <th>Total Price</th>
+                <th>Total Price ($)</th>
                 <th>Date</th>
             </tr>
         </thead>
         <tbody>
+            {% set grand_total = 0 %}
             {% for sale in sales_data %}
+            {% set grand_total = grand_total + sale['total_price'] %}
             <tr>
                 <td>{{ sale['item_name'] }}</td>
                 <td>{{ sale['quantity'] }}</td>
@@ -32,5 +153,31 @@
             {% endfor %}
         </tbody>
     </table>
+
+    <!-- Summary -->
+    <div class="summary">
+        Total Revenue: ${{ "%.2f"|format(grand_total) }}
+    </div>
+
+    <!-- Signature + QR Section -->
+    <table class="signature-section">
+        <tr>
+            <td style="text-align:left;">
+                <img src="{{ signature_image }}" style="width:200px;"><br>
+                ___________________________<br>
+                Authorized Signature
+            </td>
+            <td style="text-align:right;">
+                <img src="{{ qr_code }}" style="width:120px;"><br>
+                Scan to Verify Report
+            </td>
+        </tr>
+    </table>
+
+    <!-- Footer -->
+    <div class="footer">
+        Mas Art Business Management System | info@masart.com | +265 999 921 447 | <span class="page-number"></span>
+    </div>
+
 </body>
 </html>
