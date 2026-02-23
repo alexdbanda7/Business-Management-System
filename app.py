@@ -195,15 +195,15 @@ def get_expenses_report(start_date, end_date):
     return report
 
 # -------------------------
-# Routes
+# Routes: Login & Logout
 # -------------------------
 @app.route('/')
 def home():
-    return redirect(url_for('login')) if 'user' not in session else redirect(url_for('dashboard'))
+    # Redirect logged-in users to dashboard, otherwise to login
+    return redirect(url_for('dashboard')) if 'user' in session else redirect(url_for('login'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-
     # If already logged in, go to dashboard
     if 'user' in session:
         return redirect(url_for('dashboard'))
@@ -220,28 +220,32 @@ def login():
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id, username, password, role FROM users WHERE username = ?", (username,))
+            cursor.execute("SELECT id, username, password, role, status FROM users WHERE username = ?", (username,))
             user = cursor.fetchone()
             conn.close()
-
         except Exception as e:
             print("Database error during login:", e)
             flash("System error. Please try again.", "error")
             return render_template('login.html')
-            expenses_data = [0] * len(months)
 
-        # If user exists
+        # Check if user exists
         if user:
+            # sqlite3.Row objects are dict-like, use indexing
             stored_password = user['password']
+            account_status = user['status'] if 'status' in user.keys() else 'active'
+
+            if account_status == 'frozen':
+                flash("This account is temporarily frozen. Contact admin.", "error")
+                return render_template('login.html')
 
             if check_password_hash(stored_password, password):
+                # Login success
                 session['user'] = user['username']
                 session['role'] = user['role']
-
                 flash(f"Welcome back, {user['username']}!", "success")
                 return redirect(url_for('dashboard'))
 
-        # If login fails
+        # Login failed
         flash("Invalid username or password.", "error")
         return render_template('login.html')
 
@@ -251,17 +255,17 @@ def login():
 
 @app.route('/logout')
 def logout():
+    # Remove session data
     session.pop('user', None)
+    session.pop('role', None)
+    flash("You have been logged out.", "info")
     return redirect(url_for('login'))
-
 # -------------------------
 # Create User
 # -------------------------
-
 @app.route('/create_user', methods=['GET', 'POST'])
 @admin_required
 def create_user():
-    # Only allow admin users
     if session.get('role') != 'admin':
         flash("Access denied.", "error")
         return redirect(url_for('dashboard'))
@@ -269,9 +273,8 @@ def create_user():
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
-        role = request.form.get('role', '').strip()  # safer than request.form['role']
+        role = request.form.get('role', '').strip()
 
-        # Validate input
         if not username or not password or not role:
             flash("All fields are required.", "error")
             return render_template('create_user.html')
@@ -289,16 +292,118 @@ def create_user():
             conn.close()
 
             flash(f"User {username} created successfully.", "success")
-            return redirect(url_for('create_user'))
+            return redirect(url_for('user_management'))
 
         except Exception as e:
             print("Error creating user:", e)
             flash("System error. Could not create user.", "error")
             return render_template('create_user.html')
 
-    # GET request
     return render_template('create_user.html')
 
+
+# -------------------------
+# Change User Role
+# -------------------------
+@app.route('/change_role/<int:user_id>', methods=['GET', 'POST'])
+@admin_required
+def change_role(user_id):
+    if session.get('role') != 'admin':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('user_management'))
+
+    # Prevent changing own role
+    if user['username'] == session.get('user'):
+        flash("You cannot change your own role.", "error")
+        return redirect(url_for('user_management'))
+
+    if request.method == 'POST':
+        new_role = request.form.get('role')
+        if new_role not in ['admin', 'staff']:
+            flash("Invalid role selected.", "error")
+            return render_template('change_role.html', user=user)
+
+        cursor.execute("UPDATE users SET role = ? WHERE id = ?", (new_role, user_id))
+        conn.commit()
+        conn.close()
+
+        flash(f"Role updated for {user['username']}.", "success")
+        return redirect(url_for('user_management'))
+
+    return render_template('change_role.html', user=user)
+
+
+# -------------------------
+# Reset Password
+# -------------------------
+@app.route('/reset_password/<int:user_id>', methods=['GET', 'POST'])
+@admin_required
+def reset_password(user_id):
+    if session.get('role') != 'admin':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('user_management'))
+
+    if request.method == 'POST':
+        new_password = request.form.get('password', '').strip()
+        if not new_password:
+            flash("Password cannot be empty.", "error")
+            return render_template('reset_password.html', user=user)
+
+        hashed_password = generate_password_hash(new_password)
+        cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_id))
+        conn.commit()
+        conn.close()
+
+        flash(f"Password reset for {user['username']}.", "success")
+        return redirect(url_for('user_management'))
+
+    return render_template('reset_password.html', user=user)
+
+# -------------------------
+# Freeze / Unfreeze User
+# -------------------------
+@app.route('/toggle_freeze/<int:user_id>', methods=['POST'])
+@admin_required
+def toggle_freeze(user_id):
+    # Prevent freezing yourself
+    if session['user_id'] == user_id:
+        flash("You cannot freeze/unfreeze your own account.", "error")
+        return redirect(url_for('user_management'))
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT status FROM users WHERE id = ?", (user_id,))
+        user = cursor.fetchone()
+        if user:
+            new_status = 'active' if user['status'] == 'frozen' else 'frozen'
+            cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
+            conn.commit()
+            flash(f"User account status updated to {new_status}.", "success")
+        conn.close()
+    except Exception as e:
+        print("Error toggling freeze:", e)
+        flash("System error. Could not update status.", "error")
+
+    return redirect(url_for('user_management'))
 
 # -------------------------
 # Delete User
@@ -306,17 +411,52 @@ def create_user():
 @app.route('/delete_user/<int:user_id>', methods=['POST'])
 @admin_required
 def delete_user(user_id):
-    if 'user' not in session:
-        return redirect(url_for('login'))
+    if session.get('role') != 'admin':
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
 
-    with get_db_connection() as conn:
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
-        conn.commit()
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
 
-    flash("User deleted!", "success")
-    return redirect(url_for('dashboard'))
+    if not user:
+        flash("User not found.", "error")
+        return redirect(url_for('user_management'))
 
+    # Prevent deleting yourself
+    if user['username'] == session.get('user'):
+        flash("You cannot delete your own account.", "error")
+        return redirect(url_for('user_management'))
+
+    # Prevent deleting last admin
+    if user['role'] == 'admin':
+        cursor.execute("SELECT COUNT(*) FROM users WHERE role='admin'")
+        admin_count = cursor.fetchone()[0]
+        if admin_count <= 1:
+            flash("Cannot delete the last admin.", "error")
+            return redirect(url_for('user_management'))
+
+    cursor.execute("DELETE FROM users WHERE id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+    flash("User deleted successfully.", "success")
+    return redirect(url_for('user_management'))
+
+
+# -------------------------
+# User Management (View Users)
+# -------------------------
+@app.route('/user_management')
+@admin_required
+def user_management():
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, username, role, status FROM users")  # include status
+    users = cursor.fetchall()
+    conn.close()
+    return render_template('user_management.html', users=users)
 
 # -------------------------
 # Dashboard

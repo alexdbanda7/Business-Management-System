@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Change Role{% endblock %}
+
+{% block content %}
+<h2>Change Role for {{ user['username'] }}</h2>
+
+<form method="POST">
+    <label>Select New Role:</label>
+    <select name="role" required>
+        <option value="">Select role</option>
+        <option value="admin" {% if user['role']=='admin' %}selected{% endif %}>Admin</option>
+        <option value="staff" {% if user['role']=='staff' %}selected{% endif %}>Staff</option>
+    </select>
+
+    <br><br>
+    <button type="submit">Update Role</button>
+    <a href="{{ url_for('user_management') }}"><button type="button">Cancel</button></a>
+</form>
+{% endblock %}

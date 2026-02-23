@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>User Management</h2>
+
+<a href="{{ url_for('create_user') }}">
+    <button>Create New User</button>
+</a>
+
+<br><br>
+
+<style>
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+/* Base button style */
+button {
+    padding: 6px 12px;
+    margin-right: 5px;
+    border: none;
+    color: white;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+/* Specific button colors */
+button.create-user {
+    background-color: #007bff; /* blue */
+}
+button.create-user:hover { background-color: #0056b3; }
+
+button.reset-password {
+    background-color: #17a2b8; /* teal */
+}
+button.reset-password:hover { background-color: #138496; }
+
+button.change-role {
+    background-color: #ffc107; /* yellow */
+    color: black;
+}
+button.change-role:hover { background-color: #e0a800; }
+
+button.delete-user {
+    background-color: #dc3545; /* red */
+}
+button.delete-user:hover { background-color: #c82333; }
+
+button.freeze {
+    background-color: #6c757d; /* gray */
+}
+button.freeze:hover { background-color: #5a6268; }
+
+button.unfreeze {
+    background-color: #28a745; /* green */
+}
+button.unfreeze:hover { background-color: #218838; }
+
+button:disabled {
+    background-color: grey;
+    cursor: not-allowed;
+}
+
+a button {
+    display: inline-block;
+}
+</style>
+
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Username</th>
+        <th>Role</th>
+        <th>Status</th>
+        <th>Action</th>
+    </tr>
+
+    {% for user in users %}
+    <tr>
+        <td>{{ user['id'] }}</td>
+        <td>{{ user['username'] }}</td>
+        <td>{{ user['role'] }}</td>
+        <td>{{ user['status'] }}</td>
+        <td>
+            {% if user['username'] != session['user'] %}
+                <!-- Reset Password -->
+                <a href="{{ url_for('reset_password', user_id=user['id']) }}">
+                    <button type="button" class="reset-password">Reset Password</button>
+                </a>
+
+                <!-- Change Role -->
+                <a href="{{ url_for('change_role', user_id=user['id']) }}">
+                    <button type="button" class="change-role">Change Role</button>
+                </a>
+
+                <!-- Delete User -->
+                <form method="POST" action="{{ url_for('delete_user', user_id=user['id']) }}" style="display:inline;" onsubmit='return confirm("Are you sure you want to delete user {{ user.username|e }}?");'>
+                    <button type="submit" class="delete-user">Delete</button>
+                </form>
+
+                <!-- Freeze/Unfreeze Button -->
+                <form method="POST" action="{{ url_for('toggle_freeze', user_id=user['id']) }}" style="display:inline;">
+                    {% if user['status'] == 'active' %}
+                        <button type="submit" class="freeze">Freeze</button>
+                    {% else %}
+                        <button type="submit" class="unfreeze">Unfreeze</button>
+                    {% endif %}
+                </form>
+            {% else %}
+                <span>(You)</span>
+            {% endif %}
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
