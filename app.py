@@ -29,6 +29,34 @@ def admin_required(f):
 DATABASE = "database.db"
 
 # -------------------------
+# Auto-update audit_logs columns
+# -------------------------
+def ensure_audit_columns():
+    conn = sqlite3.connect(DATABASE)
+    cursor = conn.cursor()
+
+    # Get existing columns
+    cursor.execute("PRAGMA table_info(audit_logs)")
+    columns = [col[1] for col in cursor.fetchall()]  # col[1] is the column name
+
+    # Add missing columns if necessary
+    if "ip_address" not in columns:
+        print("Adding 'ip_address' column to audit_logs...")
+        cursor.execute("ALTER TABLE audit_logs ADD COLUMN ip_address TEXT")
+    if "user_agent" not in columns:
+        print("Adding 'user_agent' column to audit_logs...")
+        cursor.execute("ALTER TABLE audit_logs ADD COLUMN user_agent TEXT")
+    if "timestamp" not in columns:
+        print("Adding 'timestamp' column to audit_logs...")
+        cursor.execute("ALTER TABLE audit_logs ADD COLUMN timestamp DATETIME")
+
+    conn.commit()
+    conn.close()
+
+# Run it once at app startup
+ensure_audit_columns()
+
+# -------------------------
 # Database Setup
 # -------------------------
 def get_db_connection():
@@ -119,6 +147,16 @@ def init_db():
                 FOREIGN KEY(category_id) REFERENCES income_categories(id)
             )
         ''')
+        # ---------------- Audit Logs table ----------------
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS audit_logs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                actor_username TEXT NOT NULL,
+                action TEXT NOT NULL,
+                target_username TEXT,
+                timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
 
         # ---------------- Categories table ----------------
         cursor.execute('''
@@ -149,6 +187,23 @@ def init_db():
             print("\n✅ Default admin created:")
             print("   Username: admin")
             print("   Password: admin123\n")
+
+# -------------------------
+# Audit Logging Function
+# -------------------------
+def log_action(actor, action, target=None, ip=None, user_agent=None):
+    try:
+        conn = sqlite3.connect(DATABASE)
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO audit_logs (actor_username, action, target_username, timestamp, ip_address, user_agent)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, (actor, action, target, datetime.utcnow(), ip, user_agent))
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print("Audit log error:", e)
+
 # -------------------------
 # Helper Functions
 # -------------------------
@@ -203,67 +258,76 @@ def get_expenses_report(start_date, end_date):
 # -------------------------
 # Routes: Login & Logout
 # -------------------------
+
 @app.route('/')
 def home():
-    # Redirect logged-in users to dashboard, otherwise to login
     return redirect(url_for('dashboard')) if 'user' in session else redirect(url_for('login'))
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # If already logged in, go to dashboard
     if 'user' in session:
         return redirect(url_for('dashboard'))
 
     if request.method == 'POST':
         username = request.form.get('username', '').strip()
         password = request.form.get('password', '').strip()
+        ip = request.remote_addr
+        user_agent = request.headers.get('User-Agent')
 
-        # Validate input
         if not username or not password:
             flash("Please enter both username and password.", "error")
-            return render_template('login.html')
+            return redirect(url_for('login'))
 
         try:
             conn = get_db_connection()
             cursor = conn.cursor()
-            cursor.execute("SELECT id, username, password, role, status FROM users WHERE username = ?", (username,))
+            cursor.execute(
+                "SELECT id, username, password, role, status FROM users WHERE username = ?",
+                (username,)
+            )
             user = cursor.fetchone()
             conn.close()
         except Exception as e:
             print("Database error during login:", e)
             flash("System error. Please try again.", "error")
-            return render_template('login.html')
+            return redirect(url_for('login'))
 
-        # Check if user exists
         if user:
-            # sqlite3.Row objects are dict-like, use indexing
             stored_password = user['password']
             account_status = user['status'] if 'status' in user.keys() else 'active'
 
             if account_status == 'frozen':
                 flash("This account is temporarily frozen. Contact admin.", "error")
-                return render_template('login.html')
+                log_action(username, "login_attempt_frozen", username, ip, user_agent)
+                return redirect(url_for('login'))
 
             if check_password_hash(stored_password, password):
-                # Login success
+                # ✅ Login success
                 session['user'] = user['username']
                 session['role'] = user['role']
+
+                log_action(username, "login_success", username, ip, user_agent)
                 flash(f"Welcome back, {user['username']}!", "success")
                 return redirect(url_for('dashboard'))
 
-        # Login failed
+        # ❌ Login failed
         flash("Invalid username or password.", "error")
-        return render_template('login.html')
+        log_action(username, "login_failed", username, ip, user_agent)
+        return redirect(url_for('login'))
 
-    # GET request
     return render_template('login.html')
 
 
 @app.route('/logout')
 def logout():
-    # Remove session data
-    session.pop('user', None)
-    session.pop('role', None)
+    username = session.get('user', 'unknown')
+    ip = request.remote_addr
+    user_agent = request.headers.get('User-Agent')
+
+    session.clear()
+    log_action(username, "logout", username, ip, user_agent)
+
     flash("You have been logged out.", "info")
     return redirect(url_for('login'))
 
@@ -321,21 +385,24 @@ def change_role(user_id):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT id, username, role, is_protected FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
 
     if not user:
         flash("User not found.", "error")
         return redirect(url_for('user_management'))
 
-    # Prevent changing own role
     if user['username'] == session.get('user'):
         flash("You cannot change your own role.", "error")
         return redirect(url_for('user_management'))
 
+    if user['is_protected']:
+        flash("This user is protected and their role cannot be changed.", "error")
+        return redirect(url_for('user_management'))
+
     if request.method == 'POST':
         new_role = request.form.get('role')
-        if new_role not in ['admin', 'staff']:
+        if new_role not in ['admin', 'staff', 'superadmin']:
             flash("Invalid role selected.", "error")
             return render_template('change_role.html', user=user)
 
@@ -344,6 +411,7 @@ def change_role(user_id):
         conn.close()
 
         flash(f"Role updated for {user['username']}.", "success")
+        log_action(session['user'], f"Changed role to {new_role}", user['username'])  # ✅ Log action
         return redirect(url_for('user_management'))
 
     return render_template('change_role.html', user=user)
@@ -361,11 +429,15 @@ def reset_password(user_id):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT id, username, is_protected FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
 
     if not user:
         flash("User not found.", "error")
+        return redirect(url_for('user_management'))
+
+    if user['is_protected']:
+        flash("This user is protected. Password cannot be reset.", "error")
         return redirect(url_for('user_management'))
 
     if request.method == 'POST':
@@ -380,6 +452,7 @@ def reset_password(user_id):
         conn.close()
 
         flash(f"Password reset for {user['username']}.", "success")
+        log_action(session['user'], "Reset password", user['username'])  # ✅ Log action
         return redirect(url_for('user_management'))
 
     return render_template('reset_password.html', user=user)
@@ -390,28 +463,47 @@ def reset_password(user_id):
 @app.route('/toggle_freeze/<int:user_id>', methods=['POST'])
 @admin_required
 def toggle_freeze(user_id):
-    # Prevent freezing yourself
-    if session['user_id'] == user_id:
+    # Prevent admin from freezing/unfreezing themselves
+    if session.get('user_id') == user_id:
         flash("You cannot freeze/unfreeze your own account.", "error")
         return redirect(url_for('user_management'))
 
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("SELECT status FROM users WHERE id = ?", (user_id,))
-        user = cursor.fetchone()
-        if user:
-            new_status = 'active' if user['status'] == 'frozen' else 'frozen'
-            cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
-            conn.commit()
-            flash(f"User account status updated to {new_status}.", "success")
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute("SELECT username, status, is_protected FROM users WHERE id = ?", (user_id,))
+    user = cursor.fetchone()
+
+    if not user:
+        flash("User not found.", "error")
         conn.close()
-    except Exception as e:
-        print("Error toggling freeze:", e)
-        flash("System error. Could not update status.", "error")
+        return redirect(url_for('user_management'))
 
+    if user['is_protected']:
+        flash("This user is protected. Status cannot be changed.", "error")
+        conn.close()
+        return redirect(url_for('user_management'))
+
+    # Toggle status
+    new_status = 'active' if user['status'] == 'frozen' else 'frozen'
+    cursor.execute("UPDATE users SET status = ? WHERE id = ?", (new_status, user_id))
+    conn.commit()
+    conn.close()
+
+    # Get IP and user agent for logging
+    ip = request.remote_addr
+    user_agent = request.headers.get('User-Agent')
+
+    # Log action with full audit details
+    log_action(
+        actor=session.get('user', 'unknown'), 
+        action=f"Set account status to {new_status}", 
+        target=user['username'],
+        ip=ip,
+        user_agent=user_agent
+    )
+
+    flash(f"User account status updated to {new_status}.", "success")
     return redirect(url_for('user_management'))
-
 # -------------------------
 # Delete User
 # -------------------------
@@ -424,16 +516,19 @@ def delete_user(user_id):
 
     conn = get_db_connection()
     cursor = conn.cursor()
-    cursor.execute("SELECT id, username, role FROM users WHERE id = ?", (user_id,))
+    cursor.execute("SELECT id, username, role, is_protected FROM users WHERE id = ?", (user_id,))
     user = cursor.fetchone()
 
     if not user:
         flash("User not found.", "error")
         return redirect(url_for('user_management'))
 
-    # Prevent deleting yourself
     if user['username'] == session.get('user'):
         flash("You cannot delete your own account.", "error")
+        return redirect(url_for('user_management'))
+
+    if user['is_protected']:
+        flash("This user is protected and cannot be deleted.", "error")
         return redirect(url_for('user_management'))
 
     # Prevent deleting last admin
@@ -449,8 +544,8 @@ def delete_user(user_id):
     conn.close()
 
     flash("User deleted successfully.", "success")
+    log_action(session['user'], "Deleted user", user['username'])  # ✅ Log action
     return redirect(url_for('user_management'))
-
 
 # -------------------------
 # User Management (View Users)
@@ -724,9 +819,6 @@ def generate_report():
 
     return render_template('generate_report.html')
 
-# ------------------------------
-# Routes for Report download
-# ------------------------------
 # ------------------------------
 # Route: Download Sales Report PDF
 # ------------------------------
@@ -1108,7 +1200,7 @@ def view_income():
 
 
 # -----------------------------------
-# View income
+# Signatures
 # -----------------------------------
 UPLOAD_FOLDER = 'static/signatures'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -1122,6 +1214,61 @@ def upload_signature():
             file.save(os.path.join(app.config['UPLOAD_FOLDER'], filename))
             flash("Signature uploaded successfully!", "success")
     return render_template("upload_signature.html")
+
+
+# -------------------------
+# View Audit Logs
+# -------------------------
+@app.route('/audit_logs', methods=['GET', 'POST'])
+@admin_required
+def audit_logs():
+    if session.get('role') not in ['admin', 'superadmin']:
+        flash("Access denied.", "error")
+        return redirect(url_for('dashboard'))
+
+    actor_filter = request.form.get('actor', '').strip()
+    target_filter = request.form.get('target', '').strip()
+    action_filter = request.form.get('action', '').strip()
+    start_date = request.form.get('start_date', '')
+    end_date = request.form.get('end_date', '')
+
+    query = "SELECT id, actor_username, action, target_username, timestamp FROM audit_logs WHERE 1=1"
+    params = []
+
+    # Apply filters
+    if actor_filter:
+        query += " AND actor_username LIKE ?"
+        params.append(f"%{actor_filter}%")
+    if target_filter:
+        query += " AND target_username LIKE ?"
+        params.append(f"%{target_filter}%")
+    if action_filter:
+        query += " AND action LIKE ?"
+        params.append(f"%{action_filter}%")
+    if start_date:
+        query += " AND date(timestamp) >= ?"
+        params.append(start_date)
+    if end_date:
+        query += " AND date(timestamp) <= ?"
+        params.append(end_date)
+
+    query += " ORDER BY timestamp DESC LIMIT 500"  # limit for performance
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute(query, tuple(params))
+    logs = cursor.fetchall()
+    conn.close()
+
+    return render_template(
+        'audit_logs.html',
+        logs=logs,
+        actor_filter=actor_filter,
+        target_filter=target_filter,
+        action_filter=action_filter,
+        start_date=start_date,
+        end_date=end_date
+    )
 
 # -------------------------
 # Run App

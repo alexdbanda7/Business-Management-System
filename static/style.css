@@ -68,11 +68,6 @@ body {
   color: white;
 }
 
-.card.income {
-    background-color: #fbbf24;  /* yellow/orange */
-    color: #111827;
-}
-
 /* ---------------- Container ---------------- */
 .container {
   max-width: 1200px;
@@ -117,7 +112,7 @@ body {
 .card.expenses { background-color: #dc2626; }
 .card.profit { background-color: #03501f; }
 
-/* ---------------- Tables ---------------- */
+/* ---------------- Tables ----------------*/
 table {
   width: 100%;
   border-collapse: collapse;
@@ -200,6 +195,7 @@ input:focus, select:focus {
 .report-form {
   max-width: 600px;
   margin: 30px auto;
+  color: #06315c;
   background-color: #f8f9fa;
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
 }
@@ -207,7 +203,7 @@ input:focus, select:focus {
 .report-form h1 {
   text-align: center;
   margin-bottom: 20px;
-  color: #343a40;
+  color: #06315c;
 }
 
 .report-form label {
@@ -236,6 +232,7 @@ input:focus, select:focus {
 
 .low-stock h3 {
   margin-top: 0;
+  color: #b91c1c;
 }
 
 
@@ -270,21 +267,12 @@ nav a:hover, .header-nav a:hover {
 }
 
 /* ---------------- Headings ---------------- */
-h2 {
-  color: rgb(245, 240, 232);
-  margin-bottom: 15px;
-  text-align: center;
-}
 
-h3 {
-  color: rgb(22, 23, 83);
-  margin-bottom: 15px;
-  text-align: center;
-}
 
 /* ---------------- Flash Messages ---------------- */
 .flash-container {
   margin: 15px 0;
+
 }
 
 .flash {
@@ -292,6 +280,7 @@ h3 {
   border-radius: 5px;
   margin-bottom: 10px;
   font-weight: 500;
+  color: #003366;
 }
 
 .flash.success {
@@ -355,7 +344,7 @@ h3 {
   }
 }
 
-/* ---------------- Dark Mode ---------------- */
+/* ---------------- Dark Mode Dark Mode main background ---------------- */
 @media (prefers-color-scheme: dark) {
   body {
     background: #0f172a;
@@ -364,10 +353,13 @@ h3 {
 
   .chart-card {
     background: #1e293b;
+    color: #d4edda;
   }
 
   .card {
     background: #1e293b !important;
+    text-align: center;
+    color: #bfe3ee;
   }
 
   table {
@@ -385,28 +377,7 @@ h3 {
   }
 }
 /* Responsive Report Form Styles */
-.report-form {
-  max-width: 500px;
-  width: 90%; /* flexible width for small screens */
-  margin: 30px auto;
-  background-color: #ffffff;
-  border-radius: 10px;
-  box-shadow: 0 0 15px rgba(0,0,0,0.1);
-  padding: 20px;
-  box-sizing: border-box;
-  transition: box-shadow 0.3s ease;
-}
 
-.report-form:hover {
-  box-shadow: 0 0 25px rgba(0,0,0,0.15);
-}
-
-.report-form h1 {
-  text-align: center;
-  margin-bottom: 30px;
-  color: #062f86;
-  font-size: 1.8rem;
-}
 
 /* Inputs and selects fill width, have consistent padding and font */
 .report-form input,
@@ -435,7 +406,7 @@ h3 {
   margin-top: 15px;
   background-color: #062f86;
   color: white;
-  border-radius: 5px;
+  border-radius: 10px;
   cursor: pointer;
   font-weight: bold;
   font-size: 1.1rem;
@@ -476,17 +447,12 @@ h3 {
   box-shadow: 0 0 15px rgba(0,0,0,0.1);
 }
 
-.report-form h1 {
-  color: #062f86;
-  text-align: center;
-  margin-bottom: 25px;
-}
-
 .report-form label {
   display: block;
   font-weight: 600;
   margin-top: 15px;
   margin-bottom: 5px;
+  color: #062f86;
 }
 
 .report-form select,
@@ -513,6 +479,7 @@ h3 {
 .btn-primary:hover {
   background-color: #1e40af;
 }
+
 /* ---------Report Background---------- */
 .report-container {
   max-width: 900px;

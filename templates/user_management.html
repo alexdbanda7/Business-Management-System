@@ -4,7 +4,7 @@
 <h2>User Management</h2>
 
 <a href="{{ url_for('create_user') }}">
-    <button>Create New User</button>
+    <button class="create-user">Create New User</button>
 </a>
 
 <br><br>
@@ -72,6 +72,11 @@ button:disabled {
 a button {
     display: inline-block;
 }
+
+.protected-badge {
+    color: gold;
+    font-weight: bold;
+}
 </style>
 
 <table>
@@ -90,7 +95,9 @@ a button {
         <td>{{ user['role'] }}</td>
         <td>{{ user['status'] }}</td>
         <td>
-            {% if user['username'] != session['user'] %}
+            {% if user['is_protected'] == 1 %}
+                <span class="protected-badge">SuperAdmin (Protected)</span>
+            {% elif user['username'] != session['user'] %}
                 <!-- Reset Password -->
                 <a href="{{ url_for('reset_password', user_id=user['id']) }}">
                     <button type="button" class="reset-password">Reset Password</button>

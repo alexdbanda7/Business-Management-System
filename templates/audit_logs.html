@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h2>Audit Logs</h2>
+
+<style>
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+th, td {
+    padding: 10px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+tr:hover { background-color: #f1f1f1; }
+
+th {
+    background-color: #007bff;
+    color: white;
+}
+
+.actor {
+    font-weight: bold;
+}
+
+.target {
+    font-style: italic;
+    color: #555;
+}
+
+.timestamp {
+    color: #777;
+    font-size: 0.9em;
+}
+
+.filter-form input, .filter-form button {
+    padding: 6px 10px;
+    margin-right: 5px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+.filter-form button {
+    background-color: #007bff;
+    color: white;
+    border: none;
+    cursor: pointer;
+    transition: 0.2s;
+}
+
+.filter-form button:hover {
+    background-color: #0056b3;
+}
+</style>
+
+<!-- Filter Form -->
+<form method="POST" class="filter-form">
+    <input type="text" name="actor" placeholder="Actor username" value="{{ actor_filter }}">
+    <input type="text" name="target" placeholder="Target username" value="{{ target_filter }}">
+    <input type="text" name="action" placeholder="Action" value="{{ action_filter }}">
+    <input type="date" name="start_date" value="{{ start_date }}">
+    <input type="date" name="end_date" value="{{ end_date }}">
+    <button type="submit">Filter</button>
+    <a href="{{ url_for('audit_logs') }}"><button type="button">Reset</button></a>
+</form>
+
+<!-- Audit Logs Table -->
+<table>
+    <tr>
+        <th>ID</th>
+        <th>Actor</th>
+        <th>Action</th>
+        <th>Target</th>
+        <th>Timestamp</th>
+    </tr>
+
+    {% for log in logs %}
+    <tr>
+        <td>{{ log['id'] }}</td>
+        <td class="actor">{{ log['actor_username'] }}</td>
+        <td>{{ log['action'] }}</td>
+        <td class="target">{{ log['target_username'] or '-' }}</td>
+        <td class="timestamp">{{ log['timestamp'] }}</td>
+    </tr>
+    {% else %}
+    <tr>
+        <td colspan="5" style="text-align:center;">No audit logs found.</td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}
