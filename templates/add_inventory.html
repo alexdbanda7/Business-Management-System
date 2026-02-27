@@ -1,21 +1,49 @@
 {% extends "base.html" %}
-
 {% block title %}Add Inventory - Mas Art{% endblock %}
 
 {% block content %}
 <div class="form-container">
     <h2>Add New Inventory</h2>
-    <form method="POST">
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <h4>Manual Entry</h4>
         <label for="item_name">Item Name</label>
-        <input type="text" id="item_name" name="item_name" required>
+        <input type="text" id="item_name" name="item_name" placeholder="Enter item name">
 
         <label for="quantity">Quantity</label>
-        <input type="number" id="quantity" name="quantity" min="1" required>
+        <input type="number" id="quantity" name="quantity" min="1" placeholder="Enter quantity">
 
         <label for="price">Price per Item</label>
-        <input type="number" step="0.01" id="price" name="price" min="0" required>
+        <input type="number" step="0.01" id="price" name="price" min="0" placeholder="Enter price">
 
         <button type="submit" class="btn-primary">Add Inventory</button>
+
+        <hr>
+
+        <h4>Or Import from Excel</h4>
+        <input type="file" name="inventory_file" accept=".xls,.xlsx">
+        <button type="submit" class="btn-secondary">Upload Excel</button>
     </form>
 </div>
+
+<script>
+const inventoryFileInput = document.querySelector('input[name="inventory_file"]');
+const manualFields = ['item_name','quantity','price'].map(id => document.getElementById(id));
+
+inventoryFileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+        manualFields.forEach(f => f.disabled = true);
+    } else {
+        manualFields.forEach(f => f.disabled = false);
+    }
+});
+</script>
 {% endblock %}

@@ -8,6 +8,7 @@ from flask import make_response
 from xhtml2pdf import pisa
 from io import BytesIO
 import os
+import pandas as pd
 from werkzeug.utils import secure_filename
 import qrcode
 from io import BytesIO
@@ -963,6 +964,9 @@ def view_expenses():
         expenses_list = cursor.fetchall()
     return render_template('expenses.html', expenses=expenses_list)
 
+# -------------------------
+# Add Expense (manual or Excel)
+# -------------------------
 @app.route('/add_expense', methods=['GET', 'POST'])
 def add_expense():
     if 'user' not in session:
@@ -974,28 +978,69 @@ def add_expense():
         categories = [row['name'] for row in cursor.fetchall()]
 
     if request.method == 'POST':
-        category = request.form.get('category', '').strip()
-        description = request.form.get('description', '').strip()
-        amount = request.form.get('amount', '').strip()
+        # Excel import
+        if 'expense_file' in request.files and request.files['expense_file'].filename != '':
+            file = request.files['expense_file']
+            ALLOWED_EXTENSIONS = {'xls','xlsx'}
+            if '.' in file.filename and file.filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS:
+                import pandas as pd
+                try:
+                    df = pd.read_excel(file)
+                    required_cols = ['category','description','amount','date']
+                    for col in required_cols:
+                        if col not in df.columns:
+                            flash(f"Missing required column: {col}", "error")
+                            return redirect(url_for('add_expense'))
 
-        if not category or not description or not amount:
-            flash("Please fill all required fields", "error")
-            return redirect(url_for('add_expense'))
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                category = str(row['category']).strip()
+                                description = str(row['description']).strip()
+                                amount = float(row['amount'])
+                                date = row['date'] if not pd.isna(row['date']) else None
+                                cursor.execute(
+                                    "INSERT INTO expenses (category, description, amount, date) VALUES (?,?,?,?)",
+                                    (category, description, amount, date)
+                                )
+                            except Exception as row_err:
+                                flash(f"Error in row: {row_err}", "error")
+                        conn.commit()
+                    flash("Excel file imported successfully!", "success")
+                    return redirect(url_for('view_expenses'))
+                except Exception as e:
+                    flash(f"Failed to read Excel file: {e}", "error")
+                    return redirect(url_for('add_expense'))
+            else:
+                flash("Invalid file type. Only .xls or .xlsx allowed.", "error")
+                return redirect(url_for('add_expense'))
 
-        try:
-            amount = float(amount)
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO expenses (category, description, amount, date)
-                    VALUES (?, ?, ?, CURRENT_TIMESTAMP)
-                """, (category, description, amount))
-                conn.commit()
-            flash("Expense added successfully!", "success")
-            return redirect(url_for('view_expenses'))
-        except Exception as e:
-            flash(f"Error adding expense: {e}", "error")
-            return redirect(url_for('add_expense'))
+        # Manual entry
+        else:
+            category = request.form.get('category', '').strip()
+            description = request.form.get('description', '').strip()
+            amount = request.form.get('amount', '').strip()
+            date = request.form.get('date', '').strip()
+
+            if not category or not description or not amount:
+                flash("Please fill all required fields", "error")
+                return redirect(url_for('add_expense'))
+
+            try:
+                amount = float(amount)
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO expenses (category, description, amount, date) VALUES (?,?,?,?)",
+                        (category, description, amount, date if date else None)
+                    )
+                    conn.commit()
+                flash("Expense added successfully!", "success")
+                return redirect(url_for('view_expenses'))
+            except Exception as e:
+                flash(f"Error adding expense: {e}", "error")
+                return redirect(url_for('add_expense'))
 
     return render_template('add_expense.html', categories=categories)
 
@@ -1094,36 +1139,80 @@ def view_inventory():
     return render_template('inventory.html', items=items)
 
 
-
+# -------------------------
+# Add Inventory 
+# -------------------------
 @app.route('/add_inventory', methods=['GET', 'POST'])
 def add_inventory():
     if 'user' not in session:
         return redirect(url_for('login'))
 
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+
     if request.method == 'POST':
-        item_name = request.form.get('item_name', '').strip()
-        quantity = request.form.get('quantity', '').strip()
-        price = request.form.get('price', '').strip()
+        # Excel import
+        if 'inventory_file' in request.files and request.files['inventory_file'].filename != '':
+            file = request.files['inventory_file']
+            ALLOWED_EXTENSIONS = {'xls', 'xlsx'}
+            if '.' in file.filename and file.filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS:
+                import pandas as pd
+                try:
+                    df = pd.read_excel(file)
+                    required_cols = ['item_name', 'quantity', 'price']
+                    for col in required_cols:
+                        if col not in df.columns:
+                            flash(f"Missing required column: {col}", "error")
+                            return redirect(url_for('add_inventory'))
 
-        if not item_name or not quantity or not price:
-            flash("Please fill all required fields", "error")
-            return redirect(url_for('add_inventory'))
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                item_name = str(row['item_name']).strip()
+                                quantity = int(row['quantity'])
+                                price = float(row['price'])
+                                cursor.execute(
+                                    "INSERT INTO inventory (item_name, quantity, price) VALUES (?, ?, ?)",
+                                    (item_name, quantity, price)
+                                )
+                            except Exception as row_err:
+                                flash(f"Error in row: {row_err}", "error")
+                        conn.commit()
+                    flash("Excel file imported successfully!", "success")
+                    return redirect(url_for('view_inventory'))
+                except Exception as e:
+                    flash(f"Failed to read Excel file: {e}", "error")
+                    return redirect(url_for('add_inventory'))
+            else:
+                flash("Invalid file type. Only .xls or .xlsx allowed.", "error")
+                return redirect(url_for('add_inventory'))
 
-        try:
-            quantity = int(quantity)
-            price = float(price)
-            with get_db_connection() as conn:
-                cursor = conn.cursor()
-                cursor.execute("""
-                    INSERT INTO inventory (item_name, quantity, price)
-                    VALUES (?, ?, ?)
-                """, (item_name, quantity, price))
-                conn.commit()
-            flash("Inventory item added successfully!", "success")
-            return redirect(url_for('view_inventory'))
-        except Exception as e:
-            flash(f"Error adding inventory: {e}", "error")
-            return redirect(url_for('add_inventory'))
+        # Manual entry
+        else:
+            item_name = request.form.get('item_name', '').strip()
+            quantity = request.form.get('quantity', '').strip()
+            price = request.form.get('price', '').strip()
+
+            if not item_name or not quantity or not price:
+                flash("Please fill all required fields", "error")
+                return redirect(url_for('add_inventory'))
+
+            try:
+                quantity = int(quantity)
+                price = float(price)
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO inventory (item_name, quantity, price) VALUES (?, ?, ?)",
+                        (item_name, quantity, price)
+                    )
+                    conn.commit()
+                flash("Inventory item added successfully!", "success")
+                return redirect(url_for('view_inventory'))
+            except Exception as e:
+                flash(f"Error adding inventory: {e}", "error")
+                return redirect(url_for('add_inventory'))
 
     return render_template('add_inventory.html')
 
@@ -1148,33 +1237,84 @@ def delete_inventory(item_id):
     return redirect(url_for('view_inventory'))
 
 # -----------------------------------
-# Add income
+# Add income (manual or Excel upload)
 # -----------------------------------
 @app.route('/add_income', methods=['GET', 'POST'])
 def add_income():
-    conn = get_db_connection()
-    cursor = conn.cursor()
+    if 'user' not in session:
+        return redirect(url_for('login'))
 
-    # Get all categories for the dropdown
-    cursor.execute("SELECT id, name FROM income_categories ORDER BY name")
-    categories = cursor.fetchall()
+    with get_db_connection() as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, name FROM income_categories ORDER BY name")
+        categories = cursor.fetchall()
 
     if request.method == 'POST':
-        description = request.form['description']
-        amount = float(request.form['amount'])
-        category_id = int(request.form['category_id'])
-        recorded_by = session.get('user')
+        # Excel import
+        if 'income_file' in request.files and request.files['income_file'].filename != '':
+            file = request.files['income_file']
+            ALLOWED_EXTENSIONS = {'xls','xlsx'}
+            if '.' in file.filename and file.filename.rsplit('.',1)[1].lower() in ALLOWED_EXTENSIONS:
+                import pandas as pd
+                try:
+                    df = pd.read_excel(file)
+                    required_cols = ['description','amount','category_id']
+                    for col in required_cols:
+                        if col not in df.columns:
+                            flash(f"Missing required column: {col}", "error")
+                            return redirect(url_for('add_income'))
 
-        cursor.execute(
-            "INSERT INTO income (description, amount, category_id, recorded_by) VALUES (?, ?, ?, ?)",
-            (description, amount, category_id, recorded_by)
-        )
-        conn.commit()
-        conn.close()
-        flash('Income record added successfully!', 'success')
-        return redirect(url_for('view_income'))
+                    with get_db_connection() as conn:
+                        cursor = conn.cursor()
+                        for _, row in df.iterrows():
+                            try:
+                                description = str(row['description']).strip()
+                                amount = float(row['amount'])
+                                category_id = int(row['category_id'])
+                                recorded_by = session.get('user')
+                                cursor.execute(
+                                    "INSERT INTO income (description, amount, category_id, recorded_by) VALUES (?,?,?,?)",
+                                    (description, amount, category_id, recorded_by)
+                                )
+                            except Exception as row_err:
+                                flash(f"Error in row: {row_err}", "error")
+                        conn.commit()
+                    flash("Excel file imported successfully!", "success")
+                    return redirect(url_for('view_income'))
+                except Exception as e:
+                    flash(f"Failed to read Excel file: {e}", "error")
+                    return redirect(url_for('add_income'))
+            else:
+                flash("Invalid file type. Only .xls or .xlsx allowed.", "error")
+                return redirect(url_for('add_income'))
 
-    conn.close()
+        # Manual entry
+        else:
+            description = request.form.get('description', '').strip()
+            amount = request.form.get('amount', '').strip()
+            category_id = request.form.get('category_id', '').strip()
+            recorded_by = session.get('user')
+
+            if not description or not amount or not category_id:
+                flash("Please fill all required fields", "error")
+                return redirect(url_for('add_income'))
+
+            try:
+                amount = float(amount)
+                category_id = int(category_id)
+                with get_db_connection() as conn:
+                    cursor = conn.cursor()
+                    cursor.execute(
+                        "INSERT INTO income (description, amount, category_id, recorded_by) VALUES (?,?,?,?)",
+                        (description, amount, category_id, recorded_by)
+                    )
+                    conn.commit()
+                flash("Income record added successfully!", "success")
+                return redirect(url_for('view_income'))
+            except Exception as e:
+                flash(f"Error adding income: {e}", "error")
+                return redirect(url_for('add_income'))
+
     return render_template('add_income.html', categories=categories)
 
 # -----------------------------------
@@ -1268,6 +1408,46 @@ def audit_logs():
         start_date=start_date,
         end_date=end_date
     )
+
+# ------------------------------
+# Route: Upload Income via Excel
+# ------------------------------
+@app.route('/upload_income', methods=['GET', 'POST'])
+def upload_income():
+    if 'user' not in session:
+        return redirect(url_for('login'))
+
+    import pandas as pd
+    from datetime import datetime
+
+    if request.method == 'POST':
+        file = request.files.get('excel_file')
+        if file and file.filename.endswith(('.xls', '.xlsx')):
+            df = pd.read_excel(file)
+
+            # Validate columns
+            expected_cols = ['description', 'amount', 'category_id', 'date']
+            if not all(col in df.columns for col in expected_cols):
+                flash(f"Excel must contain columns: {expected_cols}", "error")
+                return redirect(url_for('upload_income'))
+
+            # Insert into database
+            with get_db_connection() as conn:
+                cursor = conn.cursor()
+                for _, row in df.iterrows():
+                    cursor.execute("""
+                        INSERT INTO income (description, amount, category_id, date)
+                        VALUES (?, ?, ?, ?)
+                    """, (row['description'], row['amount'], row['category_id'], row.get('date', datetime.now().date())))
+                conn.commit()
+
+            flash("Income data imported successfully!", "success")
+            return redirect(url_for('add_income'))
+        else:
+            flash("Please upload a valid Excel file (.xls or .xlsx)", "error")
+            return redirect(url_for('upload_income'))
+
+    return render_template('upload_income.html')
 
 # -------------------------
 # Run App

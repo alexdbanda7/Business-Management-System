@@ -2,27 +2,55 @@
 {% block title %}Add Expense - Mas Art{% endblock %}
 
 {% block content %}
-<h2>Add New Expense</h2>
-
 <div class="form-container">
-    <form method="POST" action="{{ url_for('add_expense') }}">
+    <h2>Add New Expense</h2>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <form method="POST" enctype="multipart/form-data">
+        <h4>Manual Entry</h4>
         <label for="category">Expense Category</label>
-        <select name="category" id="category" required>
+        <select name="category" id="category">
             {% for cat in categories %}
                 <option value="{{ cat }}">{{ cat }}</option>
             {% endfor %}
         </select>
 
         <label for="description">Description</label>
-        <input type="text" name="description" id="description" placeholder="Enter description" required>
+        <input type="text" name="description" id="description" placeholder="Enter description">
 
         <label for="amount">Amount</label>
-        <input type="number" name="amount" id="amount" step="0.01" required>
+        <input type="number" name="amount" id="amount" step="0.01" placeholder="Enter amount">
 
         <label for="date">Date</label>
-        <input type="date" name="date" id="date" required>
+        <input type="date" name="date" id="date">
 
         <button type="submit" class="btn-primary">Save Expense</button>
+
+        <hr>
+
+        <h4>Or Import from Excel</h4>
+        <input type="file" name="expense_file" accept=".xls,.xlsx">
+        <button type="submit" class="btn-secondary">Upload Excel</button>
     </form>
 </div>
+
+<script>
+const expenseFileInput = document.querySelector('input[name="expense_file"]');
+const manualFields = ['category','description','amount','date'].map(id => document.getElementById(id));
+
+expenseFileInput.addEventListener('change', function() {
+    if (this.files.length > 0) {
+        manualFields.forEach(f => f.disabled = true);
+    } else {
+        manualFields.forEach(f => f.disabled = false);
+    }
+});
+</script>
 {% endblock %}
