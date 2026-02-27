@@ -4,7 +4,7 @@
     <style>
         @page {
             size: A4;
-            margin: 40px;
+            margin: 30px;
             counter-increment: page;
         }
 
@@ -12,6 +12,9 @@
             font-family: Arial, sans-serif;
             color: #333;
             position: relative;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
         }
 
         /* Watermark Logo */
@@ -21,48 +24,49 @@
             left: 50%;
             transform: translate(-50%, -50%);
             opacity: 0.05;
-            width: 400px;
+            width: 300px;
             z-index: -1;
         }
 
         /* Header */
         .header-table {
             width: 100%;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
         }
 
         .logo {
-            width: 150px;
+            width: 120px;
         }
 
         .company-info {
             text-align: right;
-            font-size: 12px;
+            font-size: 11px;
         }
 
         h2 {
             text-align: center;
-            margin-top: 20px;
+            margin-top: 15px;
             color: #062f86;
+            font-size: 20px;
         }
 
         .meta {
             text-align: center;
-            font-size: 13px;
-            margin-bottom: 20px;
+            font-size: 12px;
+            margin-bottom: 15px;
         }
 
         /* Sales Table */
         table {
             width: 100%;
             border-collapse: collapse;
-            margin-top: 20px;
-            font-size: 13px;
+            margin-top: 15px;
+            font-size: 12px;
         }
 
         th, td {
             border: 1px solid #ddd;
-            padding: 10px;
+            padding: 8px;
             text-align: left;
         }
 
@@ -77,25 +81,37 @@
 
         /* Summary */
         .summary {
-            margin-top: 25px;
+            margin-top: 15px;
             text-align: right;
             font-weight: bold;
         }
 
         /* Signature + QR */
-        .signature-section {
-            margin-top: 60px;
+        .signature-qr-wrapper {
+            margin-top: auto;
+            display: flex;
+            justify-content: space-between;
             width: 100%;
+            padding-top: 20px;
+            border-top: 1px solid #ccc;
         }
 
+        .signature-qr-wrapper div {
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .signature-qr-wrapper img {
+            display: block;
+            margin: 0 auto 5px auto;
+        }
+
+        /* Footer */
         .footer {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
             text-align: center;
             font-size: 11px;
             color: #777;
+            margin-top: 5px;
         }
 
         .page-number:after {
@@ -105,26 +121,63 @@
 </head>
 <body>
 
-    <!-- Watermark -->
-    <img src="{{ url_for('static', filename='assets/logo.png') }}" class="watermark">
+    <!-- Watermark (large, faded) -->
 
-    <!-- Header -->
-    <table class="header-table">
-        <tr>
-            <td>
-                <img src="{{ url_for('static', filename='assets/logo.png') }}" class="logo">
-            </td>
-            <td class="company-info">
-                <strong>Mas Art Business Management System</strong><br>
-                P.O Box 31808<br>
-                Lilongwe, Malawi<br>
-                Email: info@masartngs.com<br>
-                Phone: +265 999 921 447<br>
-                Report ID: {{ report_id }}<br>
-                Generated: {{ current_date }}
-            </td>
-        </tr>
-    </table>
+<!-- Header -->
+<table class="header-table">
+    <tr>
+        <td style="width: 150px; vertical-align: middle;">
+            <!-- Smaller logo for header -->
+            <img src="{{ logo_image }}" class="logo-small" alt="Mas Art Logo">
+        </td>
+        <td class="company-info" style="vertical-align: middle;">
+            <strong>Mas Art Business Management System</strong><br>
+            P.O Box 31808<br>
+            Lilongwe, Malawi<br>
+            Email: info@masartngs.com<br>
+            Phone: +265 999 921 447<br>
+            Report ID: {{ report_id }}<br>
+            Generated: {{ current_date }}
+        </td>
+    </tr>
+</table>
+
+<style>
+/* Watermark (large, faint background) */
+.watermark {
+    position: fixed;
+    top: 45%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    opacity: 0.07;  /* very faint */
+    width: 350px;
+    z-index: -1;
+}
+
+/* Header table styling */
+.header-table {
+    width: 100%;
+    margin-bottom: 25px;
+    border-bottom: 1px solid #ccc;
+    padding-bottom: 10px;
+}
+
+/* Smaller logo in header */
+.logo-small {
+    width: 120px;
+    display: block;
+    margin: 0 auto;
+}
+
+/* Company info alignment */
+.company-info {
+    font-size: 12px;
+    text-align: right;
+    color: #222;
+}
+
+/* Headings and report title remain the same */
+</style>
 
     <!-- Report Title -->
     <h2>{{ report_type | capitalize }} Sales Report</h2>
@@ -143,13 +196,13 @@
         <tbody>
             {% set grand_total = 0 %}
             {% for sale in sales_data %}
-            {% set grand_total = grand_total + sale['total_price'] %}
-            <tr>
-                <td>{{ sale['item_name'] }}</td>
-                <td>{{ sale['quantity'] }}</td>
-                <td>{{ "%.2f"|format(sale['total_price']) }}</td>
-                <td>{{ sale['date'] }}</td>
-            </tr>
+                {% set grand_total = grand_total + sale['total_price'] %}
+                <tr>
+                    <td>{{ sale['item_name'] }}</td>
+                    <td>{{ sale['quantity'] }}</td>
+                    <td>{{ "%.2f"|format(sale['total_price']) }}</td>
+                    <td>{{ sale['date'] }}</td>
+                </tr>
             {% endfor %}
         </tbody>
     </table>
@@ -160,19 +213,17 @@
     </div>
 
     <!-- Signature + QR Section -->
-    <table class="signature-section">
-        <tr>
-            <td style="text-align:left;">
-                <img src="{{ signature_image }}" style="width:200px;"><br>
-                ___________________________<br>
-                Authorized Signature
-            </td>
-            <td style="text-align:right;">
-                <img src="{{ qr_code }}" style="width:120px;"><br>
-                Scan to Verify Report
-            </td>
-        </tr>
-    </table>
+    <div class="signature-qr-wrapper">
+        <div>
+            <img src="{{ signature_image }}" style="width:90px;">
+            ___________________________<br>
+            Authorized Signature
+        </div>
+        <div>
+            <img src="{{ qr_code }}" style="width:70px;">
+            Scan to Verify Report
+        </div>
+    </div>
 
     <!-- Footer -->
     <div class="footer">

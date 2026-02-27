@@ -824,7 +824,6 @@ def generate_report():
 # ------------------------------
 @app.route('/download_report_pdf/<report_type>', methods=['GET'])
 def download_report_pdf(report_type):
-    # Ensure user is logged in
     if 'user' not in session:
         return "Access denied: Please log in first.", 403
 
@@ -832,7 +831,7 @@ def download_report_pdf(report_type):
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
-            # Fetch sales data
+            # Fetch sales data based on report type
             if report_type == 'daily':
                 cursor.execute("""
                     SELECT i.item_name, s.quantity, s.total_price, s.date
@@ -862,28 +861,28 @@ def download_report_pdf(report_type):
         # Generate unique report ID
         report_id = f"MAS-{datetime.now().strftime('%Y%m%d')}-{random.randint(1000,9999)}"
 
-        # Absolute paths
-        logo_path = os.path.join(app.root_path, 'static', 'assets', 'logo.png')
-        signature_path = os.path.join(app.root_path, 'static', 'signatures', 'authorized_signature.png')
+        # Absolute paths for PDF assets
+        logo_image = os.path.join(app.root_path, 'static', 'assets', 'logo2.png')
+        signature_image = os.path.join(app.root_path, 'static', 'signatures', 'authorized_signature.png')
 
         # Generate QR code
         verification_url = f"https://yourdomain.com/verify/{report_id}"
         qr_img = qrcode.make(verification_url)
         qr_folder = os.path.join(app.root_path, 'static', 'qr')
         os.makedirs(qr_folder, exist_ok=True)
-        qr_path = os.path.join(qr_folder, f'{report_id}.png')
-        qr_img.save(qr_path)
+        qr_code = os.path.join(qr_folder, f'{report_id}.png')
+        qr_img.save(qr_code)
 
-        # Render PDF template
+        # Render PDF template with proper variables
         rendered = render_template(
             'report_pdf.html',
             sales_data=sales_data,
             report_type=report_type,
             report_id=report_id,
             current_date=datetime.now().strftime("%d %B %Y"),
-            logo_path=logo_path,
-            qr_code=qr_path,
-            signature_image=signature_path if os.path.exists(signature_path) else ""
+            logo_image=logo_image,
+            qr_code=qr_code,
+            signature_image=signature_image if os.path.exists(signature_image) else ""
         )
 
         # Generate PDF

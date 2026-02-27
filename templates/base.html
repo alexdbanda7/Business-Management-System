@@ -5,6 +5,96 @@
     <title>{% block title %}IDM{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
+<script>
+/* ================== NOTIFICATIONS ================== */
+function showNotification(type, message) {
+    const container = document.getElementById("notification-container");
+
+    const icons = {
+        success: "✔",
+        error: "❌",
+        warning: "⚠",
+        info: "ℹ"
+    };
+
+    const sounds = {
+        success: "/static/sounds/success.mp3",
+        error: "/static/sounds/error.mp3",
+        warning: "/static/sounds/warning.mp3"
+    };
+
+    const notification = document.createElement("div");
+    notification.className = "notify " + type;
+
+    notification.innerHTML = `
+        <div class="notify-left">
+            <span class="notify-icon">${icons[type] || "ℹ"}</span>
+            <span>${message}</span>
+        </div>
+        <button class="notify-close">&times;</button>
+    `;
+
+    container.appendChild(notification);
+
+    if (sounds[type]) {
+        const audio = new Audio(sounds[type]);
+        audio.play().catch(() => {});
+    }
+
+    // Auto remove after 4s
+    setTimeout(() => removeNotification(notification), 4000);
+
+    // Manual close
+    notification.querySelector(".notify-close")
+        .addEventListener("click", () => removeNotification(notification));
+}
+
+function removeNotification(notification) {
+    notification.classList.add("hide");
+    setTimeout(() => notification.remove(), 400);
+}
+
+/* ================== DARK MODE TOGGLE ================== */
+function toggleTheme() {
+    document.body.classList.toggle("dark-mode");
+    const isDark = document.body.classList.contains("dark-mode");
+    localStorage.setItem("theme", isDark ? "dark" : "light");
+}
+
+// Load saved theme
+document.addEventListener("DOMContentLoaded", function () {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark-mode");
+    }
+});
+
+/* ================== PROFILE DROPDOWN ================== */
+document.addEventListener("DOMContentLoaded", function () {
+    const savedTheme = localStorage.getItem("theme");
+    if (savedTheme === "dark") {
+        document.body.classList.add("dark-mode");
+    }
+
+    // Initialize theme toggle button and icon update
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+
+    function updateThemeIcon() {
+        const isDark = document.body.classList.contains("dark-mode");
+        themeToggleBtn.textContent = isDark ? '☀️' : '🌙';
+    }
+
+    if (themeToggleBtn) {
+        themeToggleBtn.addEventListener("click", () => {
+            toggleTheme();  // your existing toggle function
+            updateThemeIcon();
+        });
+
+        updateThemeIcon(); // set icon on page load
+    }
+});
+</script>
+
 <body>
 
 <<!-- Sidebar -->
@@ -57,31 +147,40 @@
         <div class="header-left">
             <h1>Business Management System</h1>
         </div>
-        <nav class="header-nav">
-            <a href="{{ url_for('dashboard') }}">Dashboard</a>
-            <a href="{{ url_for('view_sales') }}">Sales</a>
-            <a href="{{ url_for('view_expenses') }}">Expenses</a>
-            <a href="{{ url_for('view_inventory') }}">Inventory</a>
-            {% if session.get('role') == 'admin' %}
-                <a href="{{ url_for('create_user') }}" class="btn-admin">Admin Panel</a>
-            {% endif %}
-            <a href="{{ url_for('generate_report') }}" class="btn-report">Generate Report</a>
-            <a href="{{ url_for('logout') }}">Logout</a>
+            <!-- Inside your header navigation -->
+            <nav class="header-nav">
+                <a href="{{ url_for('dashboard') }}">Dashboard</a>
+                <a href="{{ url_for('view_sales') }}">Sales</a>
+                <a href="{{ url_for('view_expenses') }}">Expenses</a>
+                <a href="{{ url_for('view_inventory') }}">Inventory</a>
+                {% if session.get('role') == 'admin' %}
+                    <a href="{{ url_for('create_user') }}" class="btn-admin">Admin Panel</a>
+                {% endif %}
+                <a href="{{ url_for('generate_report') }}" class="btn-report">Generate Report</a>
+
+                <!-- Dark/Light Mode Toggle Button -->
+                <a href="javascript:void(0);" id="themeToggleBtn" title="Toggle Dark/Light Mode" style="cursor:pointer; user-select:none;">🌙</a>
+
+                <a href="{{ url_for('logout') }}">Logout</a>
+            </nav>
+
         </nav>
     </header>
 
     <!-- Flash Messages -->
-    {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-            <div class="flash-container">
-                {% for category, message in messages %}
-                    <div class="flash {{ category }}">
-                        {{ message }}
-                    </div>
-                {% endfor %}
-            </div>
-        {% endif %}
-    {% endwith %}
+    <!-- Flash Messages -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-container">
+                    {% for category, message in messages %}
+                        <div class="flash {{ category }}">
+                            <span>{{ message }}</span>
+                            <button class="close-btn">&times;</button>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
 
     <main>
         {% block content %}{% endblock %}

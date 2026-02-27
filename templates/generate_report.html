@@ -3,30 +3,35 @@
 {% block title %}Generate Sales Report{% endblock %}
 
 {% block content %}
-<div class="form-container report-form">
+<div class="form-container report-form" role="main" aria-labelledby="pageTitle">
 
   <!-- Logo -->
   <img src="{{ url_for('static', filename='assets/logo.png') }}" 
        alt="MasArt System Logo"
-       class="form-logo">
+       class="form-logo" aria-hidden="true">
 
-  <h3>Generate Sales Report</h3>
+  <h2 id="pageTitle" tabindex="0">Generate Sales Report</h2>
 
-  <form method="POST" novalidate>
-    <label for="report_type">Select Report Type:</label>
-    <select name="report_type" id="report_type" required>
+  <form method="POST" novalidate aria-describedby="reportDesc">
+    <p id="reportDesc" class="visually-hidden">Select a report type and optionally specify a custom date range to generate the sales report.</p>
+
+    <label for="report_type" class="form-label">Select Report Type:</label>
+    <select name="report_type" id="report_type" class="form-select" required aria-required="true">
       <option value="daily">Daily</option>
       <option value="weekly">Weekly</option>
       <option value="monthly">Monthly</option>
       <option value="custom">Custom Period</option>
     </select>
 
-    <div id="custom-dates" style="display:none;">
-      <label for="start_date">Start Date:</label>
-      <input type="date" name="start_date" id="start_date" />
+    <div id="custom-dates" class="custom-dates" style="display:none;">
+      <label for="start_date" class="form-label">Start Date:</label>
+      <input type="date" name="start_date" id="start_date" class="form-input" aria-describedby="startDateHelp" />
 
-      <label for="end_date">End Date:</label>
-      <input type="date" name="end_date" id="end_date" />
+      <label for="end_date" class="form-label">End Date:</label>
+      <input type="date" name="end_date" id="end_date" class="form-input" aria-describedby="endDateHelp" />
+
+      <small id="startDateHelp" class="form-help">Select the beginning of the custom date range.</small>
+      <small id="endDateHelp" class="form-help">Select the end of the custom date range.</small>
     </div>
 
     <button type="submit" class="btn-primary">Generate Report</button>
@@ -34,11 +39,131 @@
 </div>
 
 <style>
-.form-logo {
-    width: 110px;          /* slightly larger for inside pages */
+  /* Container styling */
+  .report-form {
+    background: #fff;
+    max-width: 400px;
+    margin: 3rem auto;
+    padding: 2.5rem 2rem;
+    border-radius: 12px;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    text-align: center;
+    color: #0c2544;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  /* Logo */
+  .form-logo {
+    width: 90px;
+    margin: 0 auto 20px auto;
     display: block;
-    margin: 0 auto 15px auto;
-}
+  }
+
+  /* Headings */
+  h2 {
+    margin-bottom: 1.5rem;
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+
+  /* Labels */
+  .form-label {
+    display: block;
+    text-align: left;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 1rem;
+  }
+
+  /* Form inputs */
+  .form-select, .form-input {
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    font-size: 1rem;
+    border: 2px solid #0c2544;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    transition: border-color 0.3s ease;
+    box-sizing: border-box;
+  }
+
+  .form-select:focus, .form-input:focus {
+    border-color: #2563eb;
+    outline: none;
+  }
+
+  /* Help text */
+  .form-help {
+    display: block;
+    margin-top: -1.25rem;
+    margin-bottom: 1.5rem;
+    font-size: 0.85rem;
+    color: #64748b;
+    text-align: left;
+  }
+
+  /* Custom dates margin */
+  .custom-dates label {
+    margin-top: 1rem;
+  }
+
+  /* Submit button */
+  .btn-primary {
+    width: 100%;
+    padding: 0.65rem;
+    background-color: #0c2544;
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  .btn-primary:hover, .btn-primary:focus {
+    background-color: #1e40af;
+    outline: none;
+  }
+
+  /* Dark mode overrides */
+  body.dark-mode .report-form {
+    background: #1e293b;
+    color: #f1f5f9;
+  }
+
+  body.dark-mode .form-select,
+  body.dark-mode .form-input {
+    background: #334155;
+    border-color: #64748b;
+    color: #f1f5f9;
+  }
+
+  body.dark-mode .form-select:focus,
+  body.dark-mode .form-input:focus {
+    border-color: #3b82f6;
+  }
+
+  body.dark-mode .btn-primary {
+    background-color: #3b82f6;
+  }
+
+  body.dark-mode .btn-primary:hover,
+  body.dark-mode .btn-primary:focus {
+    background-color: #2563eb;
+  }
+
+  /* Visually hidden for accessibility */
+  .visually-hidden { 
+    position: absolute !important; 
+    width: 1px; 
+    height: 1px; 
+    padding: 0; 
+    margin: -1px; 
+    overflow: hidden; 
+    clip: rect(0,0,0,0); 
+    border: 0; 
+  }
 </style>
 
 <script>
@@ -48,6 +173,8 @@
   reportTypeSelect.addEventListener('change', function() {
     if (this.value === 'custom') {
       customDatesDiv.style.display = 'block';
+      // Optionally, set focus on the first custom date input for accessibility
+      document.getElementById('start_date').focus();
     } else {
       customDatesDiv.style.display = 'none';
     }
